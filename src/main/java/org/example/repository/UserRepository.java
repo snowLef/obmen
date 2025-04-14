@@ -62,7 +62,7 @@ public class UserRepository {
         HibernateUtil.executeInTransaction(session -> {
             User user = getUser(chatId);
             if (user != null && user.getCurrentDeal() != null) {
-                user.getCurrentDeal().setAmount(amount);
+                user.getCurrentDeal().setAmountTo(amount);
                 session.saveOrUpdate(user);  // Сохраняем изменения
             }
             return null;

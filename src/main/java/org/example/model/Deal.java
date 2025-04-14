@@ -4,8 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "deals")
@@ -19,7 +17,8 @@ public class Deal {
     private Money moneyFrom;
     private Money moneyTo;
     private String buyerName;
-    private Double amount;
+    private Double currentAmount;
+    private Double amountTo;
     private Double amountFrom;
     private Double exchangeRate;
     private DealType dealType;

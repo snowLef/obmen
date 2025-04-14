@@ -17,7 +17,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class MenuService {
@@ -107,7 +106,8 @@ public class MenuService {
 
         message.setReplyMarkup(keyboardMarkup);
 
-        MessageUtils.sendMsg(message);
+        Message msg = MessageUtils.sendMsg(message);
+        UserService.addMessageToDel(chatId, msg.getMessageId());
     }
 
     // Вспомогательный метод для создания ряда кнопок
@@ -132,13 +132,13 @@ public class MenuService {
                         Подтвердить?
                         %s -> %s
                         Имя: %s
-                        Сумма: %s %s
+                        Сумма получения: %s %s
                         Курс: %s
-                        Сумма: %s %s
+                        Сумма выдачи: %s %s
                         """.formatted(
                         user.getCurrentDeal().getMoneyFrom(), user.getCurrentDeal().getMoneyTo(),
                         user.getCurrentDeal().getBuyerName(),
-                        user.getCurrentDeal().getAmount(), user.getCurrentDeal().getMoneyTo().getName(),
+                        user.getCurrentDeal().getAmountTo(), user.getCurrentDeal().getMoneyTo().getName(),
                         user.getCurrentDeal().getExchangeRate(),
                         Math.round(user.getCurrentDeal().getAmountFrom()), user.getCurrentDeal().getMoneyFrom().getName()
                 )
@@ -206,14 +206,14 @@ public class MenuService {
         InlineKeyboardButton buttonFrom = createButton("""
                 %s %s -> %s %s
                 """.formatted(
-                deal.getAmount(), deal.getMoneyFrom(),
-                Math.round(deal.getAmount() * deal.getExchangeRate()), deal.getMoneyTo()
+                deal.getAmountTo(), deal.getMoneyFrom(),
+                Math.round(deal.getAmountTo() * deal.getExchangeRate()), deal.getMoneyTo()
         ), "from");
         InlineKeyboardButton buttonTo = createButton("""
                 %s %s -> %s %s
                 """.formatted(
-                Math.round(deal.getAmount() / deal.getExchangeRate()), deal.getMoneyFrom(),
-                deal.getAmount(), deal.getMoneyTo()
+                Math.round(deal.getAmountTo() / deal.getExchangeRate()), deal.getMoneyFrom(),
+                deal.getAmountTo(), deal.getMoneyTo()
         ), "to");
 
         SendMessage message = new SendMessage();
@@ -234,6 +234,63 @@ public class MenuService {
 
         Message msg = MessageUtils.sendMsg(message);
         UserService.addMessageToDel(chatId, msg.getMessageId());
+    }
+
+    public static Message sendSelectAmountType(long chatId) {
+        User user = UserService.getUser(chatId);
+        InlineKeyboardButton buttonGive = createButton("%s %s Забрать"
+                        .formatted(
+                                user.getCurrentDeal().getCurrentAmount(),
+                                user.getCurrentDeal().getMoneyTo()
+                        ),
+                "receive");
+        InlineKeyboardButton buttonReceive = createButton("%s %s Отдать"
+                        .formatted(
+                                user.getCurrentDeal().getCurrentAmount(),
+                                user.getCurrentDeal().getMoneyFrom()
+                        ),
+                "give");
+
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Какую сумму хотите ввести?");
+
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+
+        keyboard.add(
+                List.of(
+                        buttonGive, buttonReceive
+                )
+        );
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(keyboard);
+        message.setReplyMarkup(markup);
+
+        return MessageUtils.sendMsg(message);
+    }
+
+    public static Message sendSelectCurrencyType(long chatId) {
+        InlineKeyboardButton buttonGive = createButton("/курс", "division");
+        InlineKeyboardButton buttonReceive = createButton("*курс", "multiplication");
+
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Формула расчета");
+
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+
+        keyboard.add(
+                List.of(
+                        buttonGive, buttonReceive
+                )
+        );
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(keyboard);
+        message.setReplyMarkup(markup);
+
+        return MessageUtils.sendMsg(message);
     }
 
 }

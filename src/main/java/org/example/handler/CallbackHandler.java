@@ -11,106 +11,108 @@ import org.example.ui.MenuService;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
+import static org.example.model.Money.*;
+
 public class CallbackHandler {
+
+    User user;
 
     public void handle(CallbackQuery callbackQuery) {
         long chatId = callbackQuery.getMessage().getChatId();
         String data = callbackQuery.getData();
-        Integer msgId = callbackQuery.getMessage().getMessageId();
+        user = initUserIfNeeded(chatId);
 
+        System.out.println("[" + chatId + "] Статус: " + user.getStatus() + ", CallBackData: " + data);
 
         switch (data) {
-//            case BotCommands.BUY_USD -> start(chatId, Money.RUB, Money.USD, DealType.BUY, msgId);
-//            case BotCommands.SELL_USD -> start(chatId, Money.RUB, Money.USD, DealType.SELL, msgId);
-//
-//            case BotCommands.BUY_EUR -> start(chatId, Money.RUB, Money.EUR, DealType.BUY, msgId);
-//            case BotCommands.SELL_EUR -> start(chatId, Money.RUB, Money.EUR, DealType.SELL, msgId);
-//
-//            case BotCommands.BUY_USD_WHITE -> start(chatId, Money.RUB, Money.USDW, DealType.BUY, msgId);
-//            case BotCommands.SELL_USD_WHITE -> start(chatId, Money.RUB, Money.USDW, DealType.SELL, msgId);
-//
-//            case BotCommands.BUY_USDT -> start(chatId, Money.RUB, Money.USDT, DealType.BUY, msgId);
-//            case BotCommands.SELL_USDT -> start(chatId, Money.RUB, Money.USDT, DealType.SELL, msgId);
-
-            case "USD" -> {
-                User user = UserService.getUser(chatId);
-                Deal deal = user.getCurrentDeal();
-                if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
-                    deal.setMoneyTo(Money.USD);
-                    UserService.saveUserStatus(chatId,Status.AWAITING_SECOND_CURRENCY);
-                    MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
-                    MenuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
-                } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
-                    deal.setMoneyFrom(Money.USD);
-                    MessageUtils.editMsg(chatId, user.getMessageToEdit(),  "Выдача: " + deal.getMoneyFrom().getName());
-                    UserService.saveUserStatus(chatId,Status.AWAITING_DEAL_AMOUNT);
-                    Message msg = MessageUtils.sendText(chatId, "Введите сумму");
-                    UserService.addMessageToDel(chatId, msg.getMessageId());
-                }
-                DealService.saveOrUpdate(deal);
-            }
-
-            case "EUR" -> {
-                User user = UserService.getUser(chatId);
-                Deal deal = user.getCurrentDeal();
-                if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
-                    deal.setMoneyTo(Money.EUR);
-                    UserService.saveUserStatus(chatId,Status.AWAITING_SECOND_CURRENCY);
-                    MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
-                    MenuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
-                } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
-                    deal.setMoneyFrom(Money.EUR);
-                    MessageUtils.editMsg(chatId, user.getMessageToEdit(),  "Выдача: " + deal.getMoneyFrom().getName());
-                    UserService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                    Message msg = MessageUtils.sendText(chatId, "Введите сумму");
-                    UserService.addMessageToDel(chatId, msg.getMessageId());
-                }
-                DealService.saveOrUpdate(deal);
-            }
+            case "USD" -> handleCurrencySelection(chatId, USD);
+            case "EUR" -> handleCurrencySelection(chatId, EUR);
+            case "USDW" -> handleCurrencySelection(chatId, USDW);
+            case "USDT" -> handleCurrencySelection(chatId, USDT);
 
             case BotCommands.BALANCE -> MenuService.sendBalance(chatId);
+
             case "yes" -> ExchangeProcessor.approve(chatId);
-            case "no" -> {
-                UserService.saveUserStatus(chatId, Status.IDLE);
-                UserService.saveUserCurrentDeal(chatId, null);
-                User user = UserService.getUser(chatId);
-                user.setCurrentDeal(null);
-                user.setStatus(Status.IDLE);
-                user.setMessages(null);
-                user.setMessageToEdit(null);
-                UserService.saveOrUpdate(user);
-                MessageUtils.sendText(chatId, "Сделка отменена.");
-                MessageUtils.deleteMessages(chatId);
-            }
-            case "from" -> {
-                User user = UserService.getUser(chatId);
-                Deal deal = user.getCurrentDeal();
+            case "no" -> ExchangeProcessor.cancel(chatId);
 
-                deal.setAmountFrom(deal.getAmount());
-                deal.setAmount((double) Math.round(deal.getAmount() * deal.getExchangeRate()));
-                DealService.saveOrUpdate(deal);
-                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
-                MenuService.sendApproveMenu(chatId);
-            }
-            case "to" -> {
-                User user = UserService.getUser(chatId);
-                Deal deal = user.getCurrentDeal();
+            case "give" -> handleAmountSelection(chatId, AmountType.GIVE);
+            case "receive" -> handleAmountSelection(chatId, AmountType.RECEIVE);
 
-                deal.setAmountFrom(deal.getAmount() * deal.getExchangeRate());
-                DealService.saveOrUpdate(deal);
-                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
-                MenuService.sendApproveMenu(chatId);
-            }
+            case "division" -> handleAmountTypeSelection(chatId, CurrencyType.DIVISION);
+            case "multiplication" -> handleAmountTypeSelection(chatId, CurrencyType.MULTIPLICATION);
+
+//            case "from" -> {
+//                Deal deal = user.getCurrentDeal();
+//
+//                deal.setAmountFrom(deal.getAmountTo());
+//                deal.setAmountTo((double) Math.round(deal.getAmountTo() * deal.getExchangeRate()));
+//                DealService.saveOrUpdate(deal);
+//                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
+//                MenuService.sendApproveMenu(chatId);
+//            }
+//            case "to" -> {
+//                Deal deal = user.getCurrentDeal();
+//
+//                deal.setAmountFrom(deal.getAmountTo() * deal.getExchangeRate());
+//                DealService.saveOrUpdate(deal);
+//                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
+//                MenuService.sendApproveMenu(chatId);
+//            }
             default -> MessageUtils.sendText(chatId, "Неизвестная команда.");
         }
     }
 
-    private void start(Long chatId, Money from, Money to, DealType dealType, Integer msgId) {
-        UserService.startDeal(chatId, from, to, dealType);
-        UserService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
-        UserService.addMessageToDel(chatId, msgId);
-        Message botMsg = MessageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
-        UserService.addMessageToDel(chatId, botMsg.getMessageId());
+    private void handleCurrencySelection(Long chatId, Money money) {
+        Deal deal = user.getCurrentDeal();
+        if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
+            deal.setMoneyTo(money);
+            UserService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
+            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
+            MenuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
+        } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
+            deal.setMoneyFrom(money);
+            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());
+//            Message msg = MenuService.sendSelectAmountType(chatId);
+//            user.setMessageToEdit(msg.getMessageId());
+            MessageUtils.sendText(chatId, "Введите сумму: ");
+            user.setStatus(Status.AWAITING_DEAL_AMOUNT);
+            UserService.saveOrUpdate(user);
+//            UserService.addMessageToDel(chatId, msg.getMessageId());
+        }
+        DealService.saveOrUpdate(deal);
+    }
+
+    private void handleAmountSelection(Long chatId, AmountType type) {
+        if (user.getStatus().equals(Status.AWAITING_SELECT_AMOUNT)) {
+            user.setAmountType(type);
+            user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
+            UserService.save(user);
+            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Сумма %s".formatted(user.getCurrentDeal().getCurrentAmount()));
+            MenuService.sendSelectCurrencyType(chatId);
+//            Message msg = MessageUtils.sendText(chatId, "Введите сумму:");
+//            UserService.addMessageToDel(chatId, msg.getMessageId());
+        }
+    }
+
+    private void handleAmountTypeSelection(Long chatId, CurrencyType type) {
+        if (user.getStatus().equals(Status.AWAITING_EXCHANGE_RATE_TYPE)) {
+            user.setCurrencyType(type);
+            user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
+
+            UserService.save(user);
+            Message msg = MessageUtils.sendText(chatId, "Введите курс:");
+            UserService.addMessageToDel(chatId, msg.getMessageId());
+        }
+    }
+
+    private User initUserIfNeeded(long chatId) {
+        User user = UserService.getUser(chatId);
+        if (user == null) {
+            user = new User(chatId, Status.IDLE);
+            UserService.save(user);
+        }
+        return user;
     }
 
 }

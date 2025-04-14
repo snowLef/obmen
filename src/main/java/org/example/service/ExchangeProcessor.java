@@ -7,8 +7,6 @@ import org.example.state.Status;
 import org.example.util.MessageUtils;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-import java.util.ArrayList;
-
 public class ExchangeProcessor {
 
     public static void approve(long chatId) {
@@ -23,14 +21,14 @@ public class ExchangeProcessor {
 
         Money from = deal.getMoneyFrom();
         Money to = deal.getMoneyTo();
-        double amount = deal.getAmount();
+        double amountTo = deal.getAmountTo();
         double rate = deal.getExchangeRate();
 
         double fromBalance = CurrencyService.getBalance(from);
         double toBalance = CurrencyService.getBalance(to);
 
         if (deal.getDealType().isBuy()) {
-            if (fromBalance < amount * rate) {
+            if (fromBalance < amountTo * rate) {
                 Message botMsg = MessageUtils.sendText(chatId, "Недостаточно средств: " + from);
                 UserService.addMessageToDel(chatId, botMsg.getMessageId());
                 // Сбросим сделку
@@ -40,46 +38,61 @@ public class ExchangeProcessor {
                 return;
             }
 
-            double newFromBalance = fromBalance - amount * rate;
-            double newToBalance = toBalance + amount;
+            double newFromBalance = fromBalance - amountTo * rate;
+            double newToBalance = toBalance + amountTo;
 
             CurrencyService.updateBalance(from, newFromBalance);
             CurrencyService.updateBalance(to, newToBalance);
 
         } else {
-            if (toBalance < amount) {
+            if (toBalance < amountTo) {
                 Message botMsg = MessageUtils.sendText(chatId, "Недостаточно средств: " + to);
                 UserService.addMessageToDel(chatId, botMsg.getMessageId());
                 return;
             }
 
-            double newToBalance = toBalance - amount;
-            double newFromBalance = fromBalance + (amount * rate);
+            double newToBalance = toBalance - amountTo;
+            double newFromBalance = fromBalance + (amountTo * rate);
 
             CurrencyService.updateBalance(from, newFromBalance);
             CurrencyService.updateBalance(to, newToBalance);
         }
 
+        user = UserService.getUser(chatId);
         MessageUtils.sendText(chatId, """
                 Сделка завершена ✅
                 %s -> %s
                 Имя: %s
-                Покупка/продажа: %s %s
+                Сумма получена: %s %s
                 Курс: %s
-                Сумма: %s %s
-                """.formatted(from, to,
+                Сумма выдана: %s %s
+                """.formatted(
+                from, to,
                 user.getCurrentDeal().getBuyerName(),
-                amount, to.getName(),
+                Math.round(user.getCurrentDeal().getAmountTo()), user.getCurrentDeal().getMoneyTo(),
                 rate,
-                amount * rate, from.getName()));
+                Math.round(user.getCurrentDeal().getAmountFrom()), user.getCurrentDeal().getMoneyFrom()));
 
         // Сбросим сделку и удалим сообщения
         MessageUtils.deleteMessages(chatId);
         user.setCurrentDeal(null);
         user.setStatus(Status.IDLE);
         user.setMessages(null);
+        user.setMessageToEdit(0);
+        UserService.saveOrUpdate(user);
+    }
+
+    public static void cancel(long chatId) {
+        User user = UserService.getUser(chatId);
+        UserService.saveUserStatus(chatId, Status.IDLE);
+        UserService.saveUserCurrentDeal(chatId, null);
+        user.setCurrentDeal(null);
+        user.setStatus(Status.IDLE);
+        user.setMessages(null);
         user.setMessageToEdit(null);
         UserService.saveOrUpdate(user);
+        MessageUtils.sendText(chatId, "Сделка отменена.");
+        MessageUtils.deleteMessages(chatId);
     }
 
 }

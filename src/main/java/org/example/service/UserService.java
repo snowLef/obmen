@@ -37,6 +37,7 @@ public class UserService {
     public static void saveOrUpdate(User user) {
         HibernateUtil.executeInTransaction(session -> {
             session.saveOrUpdate(user);  // Используем merge для обновления или вставки
+            System.out.println("Обновили пользователя");
             return null;
         });
     }
@@ -99,11 +100,11 @@ public class UserService {
     }
 
     // Сохранение суммы сделки
-    public static void saveTransactionAmount(Long chatId, double amount) {
+    public static void saveDealAmount(Long chatId, double amount) {
         User user = getUser(chatId);
         HibernateUtil.executeInTransaction(session -> {
             if (user != null && user.getCurrentDeal() != null) {
-                user.getCurrentDeal().setAmount(amount);
+                user.getCurrentDeal().setAmountTo(amount);
                 session.saveOrUpdate(user);  // Сохраняем изменения
             }
             return null;
