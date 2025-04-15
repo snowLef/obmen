@@ -1,8 +1,6 @@
 package org.example.ui;
 
 import org.example.constants.BotCommands;
-import org.example.model.Currency;
-import org.example.model.Deal;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.service.CurrencyService;
@@ -149,43 +147,6 @@ public class MenuService {
         UserService.addMessageToEdit(chatId, msg.getMessageId());
         return msg;
     }
-
-//    public static void sendCustomSelectAmount(long chatId) {
-//        User user = UserService.getUser(chatId);
-//        Deal deal = user.getCurrentDeal();
-//
-//        InlineKeyboardButton buttonFrom = createButton("""
-//                %s %s -> %s %s
-//                """.formatted(
-//                deal.getAmountTo(), deal.getMoneyFrom(),
-//                Math.round(deal.getAmountTo() * deal.getExchangeRate()), deal.getMoneyTo()
-//        ), "from");
-//        InlineKeyboardButton buttonTo = createButton("""
-//                %s %s -> %s %s
-//                """.formatted(
-//                Math.round(deal.getAmountTo() / deal.getExchangeRate()), deal.getMoneyFrom(),
-//                deal.getAmountTo(), deal.getMoneyTo()
-//        ), "to");
-//
-//        SendMessage message = new SendMessage();
-//        message.setChatId(String.valueOf(chatId));
-//        message.setText("text");
-//
-//        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-//
-//        keyboard.add(
-//                List.of(
-//                        buttonFrom, buttonTo
-//                )
-//        );
-//
-//        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-//        markup.setKeyboard(keyboard);
-//        message.setReplyMarkup(markup);
-//
-//        Message msg = MessageUtils.sendMsg(message);
-//        UserService.addMessageToDel(chatId, msg.getMessageId());
-//    }
 
     public static Message sendSelectAmountType(long chatId) {
         User user = UserService.getUser(chatId);

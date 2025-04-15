@@ -1,120 +1,81 @@
 package org.example.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.model.Deal;
 import org.example.model.DealType;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.repository.UserRepository;
 import org.example.state.Status;
-import org.example.util.HibernateUtil;
-import org.hibernate.Session;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+@Service
+@RequiredArgsConstructor
 public class UserService {
 
-    private static UserRepository userRepository = new UserRepository();
+    @Autowired
+    private UserRepository userRepository;
 
-    // Конструктор, который инициализирует репозиторий
-    public UserService(UserRepository userRepository) {
-        UserService.userRepository = userRepository;
+    public User getUser(Long chatId) {
+        return userRepository.findByChatId(chatId).orElse(null);
     }
 
-    // Сохранение или обновление пользователя
-    public static void save(User user) {
-        userRepository.saveOrUpdate(user);  // Вызов метода репозитория для сохранения или обновления
+    public User getOrCreate(Long chatId) {
+        return userRepository.findByChatId(chatId)
+                .orElseGet(() -> userRepository.save(new User(chatId, Status.IDLE)));
     }
 
-    // Пример получения пользователя по chatId
-    public static User getUser(Long chatId) {
-        return userRepository.getUser(chatId);
+    public void save(User user) {
+        userRepository.save(user);
     }
 
-
-    // Сохранение или обновление пользователя
-    public static void saveOrUpdate(User user) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.saveOrUpdate(user);  // Используем merge для обновления или вставки
-            System.out.println("Обновили пользователя");
-            return null;
+    public void saveUserStatus(Long chatId, Status status) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            user.setStatus(status);
+            userRepository.save(user);
         });
     }
 
-    // Сохранение статуса пользователя
-    public static void saveUserStatus(Long chatId, Status status) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null) {
-                user.setStatus(status);
-                session.saveOrUpdate(user);  // Сохраняем изменения пользователя в базе
-            }
-            return null;
+    public void saveUserCurrentDeal(Long chatId, Deal deal) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            user.setCurrentDeal(deal);
+            userRepository.save(user);
         });
     }
 
-    public static void saveUserCurrentDeal(Long chatId, Deal deal) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null) {
-                user.setCurrentDeal(deal);
-                session.saveOrUpdate(user);  // Сохраняем изменения пользователя в базе
-            }
-            return null;
+    public void addMessageToDel(Long chatId, Integer msgId) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            user.addMessage(msgId);
+            userRepository.save(user);
         });
     }
 
-    public static void addMessageToDel(Long chatId, Integer msgId) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null) {
-                user.addMessage(msgId);
-                session.saveOrUpdate(user);  // Сохраняем изменения пользователя в базе
-            }
-            return null;
+    public void addMessageToEdit(Long chatId, Integer msgId) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            user.setMessageToEdit(msgId);
+            userRepository.save(user);
         });
     }
 
-    public static void addMessageToEdit(Long chatId, Integer msgId) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null) {
-                user.setMessageToEdit(msgId);
-                session.saveOrUpdate(user);  // Сохраняем изменения пользователя в базе
-            }
-            return null;
-        });
-    }
-
-    // Сохранение имени покупателя
-    public static void saveBuyerName(Long chatId, String name) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null && user.getCurrentDeal() != null) {
+    public void saveBuyerName(Long chatId, String name) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            if (user.getCurrentDeal() != null) {
                 user.getCurrentDeal().setBuyerName(name);
-                session.saveOrUpdate(user);  // Сохраняем изменения
+                userRepository.save(user);
             }
-            return null;
         });
     }
 
-    // Запуск новой сделки
-    public static void startDeal(Long chatId, Money from, Money to, DealType type) {
-        HibernateUtil.executeInTransaction(session -> {
+    public void startDeal(Long chatId, Money from, Money to, DealType type) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
             Deal deal = new Deal();
             deal.setMoneyFrom(from);
             deal.setMoneyTo(to);
             deal.setDealType(type);
-
-            saveOrUpdateDeal(chatId, deal, session);
-            return null;
+            user.setCurrentDeal(deal);
+            userRepository.save(user);
         });
     }
 
-    // Сохранение или обновление сделки
-    private static void saveOrUpdateDeal(Long chatId, Deal deal, Session session) {
-        session.saveOrUpdate(deal);  // Сохраняем или обновляем сделку
-        User user = getUser(chatId);  // Получаем пользователя
-        if (user != null) {
-            user.setCurrentDeal(deal);  // Привязываем сделку к пользователю
-            session.saveOrUpdate(user);  // Сохраняем изменения пользователя
-        }
-    }
 }

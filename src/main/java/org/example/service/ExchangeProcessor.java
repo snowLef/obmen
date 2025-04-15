@@ -4,7 +4,6 @@ import org.example.model.Deal;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.state.Status;
-import org.example.ui.MenuService;
 import org.example.util.MessageUtils;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -35,7 +34,7 @@ public class ExchangeProcessor {
                 // Сбросим сделку
                 user.setCurrentDeal(null);
                 user.setStatus(Status.IDLE);
-                UserService.saveOrUpdate(user);
+                UserService.save(user);
                 return;
             }
 
@@ -78,7 +77,7 @@ public class ExchangeProcessor {
         user.setStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(0);
-        UserService.saveOrUpdate(user);
+        UserService.save(user);
     }
 
     public static void cancel(long chatId) {
@@ -88,7 +87,7 @@ public class ExchangeProcessor {
         user.setStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
-        UserService.saveOrUpdate(user);
+        UserService.save(user);
         MessageUtils.sendText(chatId, "Сделка отменена.");
     }
 

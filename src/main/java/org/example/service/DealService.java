@@ -1,8 +1,6 @@
 package org.example.service;
 
 import org.example.model.Deal;
-import org.example.model.User;
-import org.example.util.HibernateUtil;
 
 public class DealService {
 

@@ -2,8 +2,6 @@ package org.example.service;
 
 import org.example.model.Currency;
 import org.example.model.Money;
-import org.example.model.User;
-import org.example.util.HibernateUtil;
 import org.hibernate.query.Query;
 
 import java.util.List;

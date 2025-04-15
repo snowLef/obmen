@@ -2,6 +2,8 @@ package org.example.util;
 
 import org.example.model.User;
 import org.example.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -11,9 +13,17 @@ import org.example.ObmenBot;
 
 import java.util.List;
 
+@Component
 public class MessageUtils {
 
-    private static final ObmenBot botInstance = new ObmenBot(); // можно заменить на DI позже
+    public static ObmenBot botInstance;
+    private final UserService userService;
+
+    @Autowired
+    public MessageUtils(ObmenBot obmenBot, UserService userService) {
+        this.botInstance = obmenBot;
+        this.userService = userService;
+    }
 
     public static Message sendText(long chatId, String text) {
         SendMessage message = SendMessage.builder()
@@ -41,7 +51,7 @@ public class MessageUtils {
     }
 
     public static void deleteMessages(Long chatId) {
-        User user = UserService.getUser(chatId);
+        User user = userService.getUser(chatId);
         List<Integer> messages = user.getMessages();
 
         messages.forEach(x -> {

@@ -1,29 +1,14 @@
 package org.example.repository;
 
 import org.example.model.User;
-import org.example.state.Status;
-import org.hibernate.query.Query;
-import org.example.util.HibernateUtil;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.util.Optional;
 
-public class UserRepository {
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
 
-    // Получение пользователя по chatId
-    public User getUser(Long chatId) {
-        return HibernateUtil.executeInTransaction(session -> {
-            String hql = "FROM User u WHERE u.chatId = :chatId";
-            Query<User> query = session.createQuery(hql, User.class);
-            query.setParameter("chatId", chatId);
-            return query.uniqueResult();  // Возвращает пользователя или null
-        });
-    }
+    Optional<User> findByChatId(Long chatId);
 
-    // Сохранение или обновление пользователя
-    public void saveOrUpdate(User user) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.saveOrUpdate(user);  // Сохраняем или обновляем пользователя
-            return null;
-        });
-    }
 }
