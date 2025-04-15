@@ -62,13 +62,11 @@ public class ExchangeProcessor {
         user = UserService.getUser(chatId);
         MessageUtils.sendText(chatId, """
                 Сделка завершена ✅
-                %s -> %s
                 Имя: %s
                 Сумма получена: %s %s
                 Курс: %s
                 Сумма выдана: %s %s
                 """.formatted(
-                from, to,
                 user.getCurrentDeal().getBuyerName(),
                 Math.round(user.getCurrentDeal().getAmountTo()), user.getCurrentDeal().getMoneyTo(),
                 rate,
@@ -84,16 +82,14 @@ public class ExchangeProcessor {
     }
 
     public static void cancel(long chatId) {
+        MessageUtils.deleteMessages(chatId);
         User user = UserService.getUser(chatId);
-        UserService.saveUserStatus(chatId, Status.IDLE);
-        UserService.saveUserCurrentDeal(chatId, null);
         user.setCurrentDeal(null);
         user.setStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
         UserService.saveOrUpdate(user);
         MessageUtils.sendText(chatId, "Сделка отменена.");
-        MessageUtils.deleteMessages(chatId);
     }
 
 }

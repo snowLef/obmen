@@ -28,10 +28,6 @@ public class UserService {
         return userRepository.getUser(chatId);
     }
 
-    // Пример получения статуса пользователя
-    public static Status getStatus(Long chatId) {
-        return userRepository.getStatus(chatId);
-    }
 
     // Сохранение или обновление пользователя
     public static void saveOrUpdate(User user) {
@@ -93,30 +89,6 @@ public class UserService {
             User user = getUser(chatId);
             if (user != null && user.getCurrentDeal() != null) {
                 user.getCurrentDeal().setBuyerName(name);
-                session.saveOrUpdate(user);  // Сохраняем изменения
-            }
-            return null;
-        });
-    }
-
-    // Сохранение суммы сделки
-    public static void saveDealAmount(Long chatId, double amount) {
-        User user = getUser(chatId);
-        HibernateUtil.executeInTransaction(session -> {
-            if (user != null && user.getCurrentDeal() != null) {
-                user.getCurrentDeal().setAmountTo(amount);
-                session.saveOrUpdate(user);  // Сохраняем изменения
-            }
-            return null;
-        });
-    }
-
-    // Сохранение курса обмена
-    public static void saveExchangeRate(Long chatId, double rate) {
-        HibernateUtil.executeInTransaction(session -> {
-            User user = getUser(chatId);
-            if (user != null && user.getCurrentDeal() != null) {
-                user.getCurrentDeal().setExchangeRate(rate);
                 session.saveOrUpdate(user);  // Сохраняем изменения
             }
             return null;

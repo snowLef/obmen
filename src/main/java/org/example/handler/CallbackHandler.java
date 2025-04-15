@@ -48,23 +48,6 @@ public class CallbackHandler {
             case "division" -> handleAmountTypeSelection(chatId, CurrencyType.DIVISION);
             case "multiplication" -> handleAmountTypeSelection(chatId, CurrencyType.MULTIPLICATION);
 
-//            case "from" -> {
-//                Deal deal = user.getCurrentDeal();
-//
-//                deal.setAmountFrom(deal.getAmountTo());
-//                deal.setAmountTo((double) Math.round(deal.getAmountTo() * deal.getExchangeRate()));
-//                DealService.saveOrUpdate(deal);
-//                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
-//                MenuService.sendApproveMenu(chatId);
-//            }
-//            case "to" -> {
-//                Deal deal = user.getCurrentDeal();
-//
-//                deal.setAmountFrom(deal.getAmountTo() * deal.getExchangeRate());
-//                DealService.saveOrUpdate(deal);
-//                UserService.saveUserStatus(chatId, Status.AWAITING_APPROVE);
-//                MenuService.sendApproveMenu(chatId);
-//            }
             default -> MessageUtils.sendText(chatId, "Неизвестная команда.");
         }
     }
@@ -92,15 +75,21 @@ public class CallbackHandler {
             Double amount = user.getCurrentDeal().getCurrentAmount();
             user.setAmountType(type);
 
+            String currentCurrency = "";
+
             if (type == AmountType.RECEIVE) {
                 user.getCurrentDeal().setAmountTo(amount);
+                currentCurrency = user.getCurrentDeal().getMoneyTo().getName();
             } else if (type == AmountType.GIVE) {
                 user.getCurrentDeal().setAmountFrom(amount);
+                currentCurrency = user.getCurrentDeal().getMoneyFrom().getName();
             }
 
             user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
             UserService.save(user);
-            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Сумма %s".formatted(user.getCurrentDeal().getCurrentAmount()));
+            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Сумма %s %s"
+                    .formatted(user.getCurrentDeal().getCurrentAmount(), currentCurrency)
+            );
             Message message = MenuService.sendSelectCurrencyType(chatId);
             user.setMessageToEdit(message.getMessageId());
             UserService.saveOrUpdate(user);
@@ -109,12 +98,10 @@ public class CallbackHandler {
     }
 
     private void handleAmountTypeSelection(Long chatId, CurrencyType type) {
-
         if (user.getStatus().equals(Status.AWAITING_EXCHANGE_RATE_TYPE)) {
             user.setCurrencyType(type);
             user.setStatus(Status.AWAITING_EXCHANGE_RATE);
             MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
-
             UserService.save(user);
             Message msg = MessageUtils.sendText(chatId, "Введите курс:");
             UserService.addMessageToDel(chatId, msg.getMessageId());

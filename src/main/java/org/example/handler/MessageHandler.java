@@ -169,6 +169,7 @@ public class MessageHandler {
                 UserService.addMessageToDel(chatId, msg.getMessageId());
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+                user.getCurrentDeal().setAmountTo(amount);
                 Message message = MessageUtils.sendText(chatId, "Введите курс: ");
                 UserService.saveOrUpdate(user);
                 UserService.addMessageToDel(chatId, message.getMessageId());
