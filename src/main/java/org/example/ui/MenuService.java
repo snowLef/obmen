@@ -19,45 +19,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class MenuService {
+import static org.example.model.Money.*;
 
-//    public static void sendMainMenu(long chatId) {
-//        SendMessage message = new SendMessage();
-//        message.setChatId(String.valueOf(chatId));
-//        message.setText("Выберите опцию:");
-//
-//        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-//
-//        keyboard.add(List.of(
-//                createButton("Купить Доллар", BotCommands.BUY_USD),
-//                createButton("Продать Доллар", BotCommands.SELL_USD)
-//        ));
-//
-//        keyboard.add(List.of(
-//                createButton("Купить Евро", BotCommands.BUY_EUR),
-//                createButton("Продать Евро", BotCommands.SELL_EUR)
-//        ));
-//
-//        keyboard.add(List.of(
-//                createButton("Купить Белый Доллар", BotCommands.BUY_USD_WHITE),
-//                createButton("Продать Белый Доллар", BotCommands.SELL_USD_WHITE)
-//        ));
-//
-//        keyboard.add(List.of(
-//                createButton("Купить Tether", BotCommands.BUY_USDT),
-//                createButton("Продать Tether", BotCommands.SELL_USDT)
-//        ));
-//
-//        keyboard.add(List.of(
-//                createButton("Баланс", BotCommands.BALANCE)
-//        ));
-//
-//        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-//        markup.setKeyboard(keyboard);
-//        message.setReplyMarkup(markup);
-//
-//        MessageUtils.sendMsg(message);
-//    }
+public class MenuService {
 
     public static void sendMainMenu(long chatId) {
         SendMessage message = new SendMessage();
@@ -109,20 +73,6 @@ public class MenuService {
         Message msg = MessageUtils.sendMsg(message);
         UserService.addMessageToDel(chatId, msg.getMessageId());
     }
-
-    // Вспомогательный метод для создания ряда кнопок
-    private static List<InlineKeyboardButton> createRow(String text1, String callback1, String text2, String callback2) {
-        return Arrays.asList(
-                createButton(text1, callback1),
-                createButton(text2, callback2)
-        );
-    }
-
-//    private static InlineKeyboardButton createButton(String text, String callback) {
-//        InlineKeyboardButton button = new InlineKeyboardButton(text);
-//        button.setCallbackData(callback);
-//        return button;
-//    }
 
     public static void sendApproveMenu(long chatId) {
         User user = UserService.getUser(chatId);
@@ -176,7 +126,8 @@ public class MenuService {
     }
 
     public static Message sendSelectCurrency(long chatId, String text) {
-        List<Currency> currencies = CurrencyService.getAllCurrency();
+        //List<Currency> currencies = CurrencyService.getAllCurrency();
+        List<Money> currencies = List.of(USDT, USD, EUR, USDW, YE);
         List<InlineKeyboardButton> buttons = currencies.stream()
                 .map(x -> createButton(x.getName(), x.getName()))
                 .toList();
@@ -199,42 +150,42 @@ public class MenuService {
         return msg;
     }
 
-    public static void sendCustomSelectAmount(long chatId) {
-        User user = UserService.getUser(chatId);
-        Deal deal = user.getCurrentDeal();
-
-        InlineKeyboardButton buttonFrom = createButton("""
-                %s %s -> %s %s
-                """.formatted(
-                deal.getAmountTo(), deal.getMoneyFrom(),
-                Math.round(deal.getAmountTo() * deal.getExchangeRate()), deal.getMoneyTo()
-        ), "from");
-        InlineKeyboardButton buttonTo = createButton("""
-                %s %s -> %s %s
-                """.formatted(
-                Math.round(deal.getAmountTo() / deal.getExchangeRate()), deal.getMoneyFrom(),
-                deal.getAmountTo(), deal.getMoneyTo()
-        ), "to");
-
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
-        message.setText("text");
-
-        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
-
-        keyboard.add(
-                List.of(
-                        buttonFrom, buttonTo
-                )
-        );
-
-        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
-        markup.setKeyboard(keyboard);
-        message.setReplyMarkup(markup);
-
-        Message msg = MessageUtils.sendMsg(message);
-        UserService.addMessageToDel(chatId, msg.getMessageId());
-    }
+//    public static void sendCustomSelectAmount(long chatId) {
+//        User user = UserService.getUser(chatId);
+//        Deal deal = user.getCurrentDeal();
+//
+//        InlineKeyboardButton buttonFrom = createButton("""
+//                %s %s -> %s %s
+//                """.formatted(
+//                deal.getAmountTo(), deal.getMoneyFrom(),
+//                Math.round(deal.getAmountTo() * deal.getExchangeRate()), deal.getMoneyTo()
+//        ), "from");
+//        InlineKeyboardButton buttonTo = createButton("""
+//                %s %s -> %s %s
+//                """.formatted(
+//                Math.round(deal.getAmountTo() / deal.getExchangeRate()), deal.getMoneyFrom(),
+//                deal.getAmountTo(), deal.getMoneyTo()
+//        ), "to");
+//
+//        SendMessage message = new SendMessage();
+//        message.setChatId(String.valueOf(chatId));
+//        message.setText("text");
+//
+//        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+//
+//        keyboard.add(
+//                List.of(
+//                        buttonFrom, buttonTo
+//                )
+//        );
+//
+//        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+//        markup.setKeyboard(keyboard);
+//        message.setReplyMarkup(markup);
+//
+//        Message msg = MessageUtils.sendMsg(message);
+//        UserService.addMessageToDel(chatId, msg.getMessageId());
+//    }
 
     public static Message sendSelectAmountType(long chatId) {
         User user = UserService.getUser(chatId);

@@ -10,6 +10,7 @@ public enum Money {
     EUR ("Eur"),
     USDW ("UsdW"),
     RUB ("Rub"),
+    YE ("Y.e."),
     USDT ("\nUsdT");
 
     private final String name;

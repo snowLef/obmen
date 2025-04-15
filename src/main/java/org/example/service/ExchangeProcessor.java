@@ -4,6 +4,7 @@ import org.example.model.Deal;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.state.Status;
+import org.example.ui.MenuService;
 import org.example.util.MessageUtils;
 import org.telegram.telegrambots.meta.api.objects.Message;
 

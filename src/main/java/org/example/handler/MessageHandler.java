@@ -155,8 +155,6 @@ public class MessageHandler {
 //                user.getCurrentDeal().setAmountTo(amount);
 //            }
 
-            Message msgToEdit;
-
             if (user.getCurrentDeal().getIsCustom()) {
                 user.setStatus(Status.AWAITING_SELECT_AMOUNT);
 //                msgToEdit = MenuService.sendSelectCurrencyType(chatId);
@@ -167,6 +165,7 @@ public class MessageHandler {
                 UserService.saveOrUpdate(user);
                 Message msg = MenuService.sendSelectAmountType(chatId);
                 user.setMessageToEdit(msg.getMessageId());
+                UserService.save(user);
                 UserService.addMessageToDel(chatId, msg.getMessageId());
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
