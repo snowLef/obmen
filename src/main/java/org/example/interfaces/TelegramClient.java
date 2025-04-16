@@ -7,7 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 public interface TelegramClient {
-    Message execute(SendMessage message) throws TelegramApiException;
-    void execute(EditMessageText message) throws TelegramApiException;
-    void execute(DeleteMessage message) throws TelegramApiException;
+    Message sendMessage(SendMessage message) throws TelegramApiException;
+    void editMessage(EditMessageText message) throws TelegramApiException;
+    void deleteMessage(DeleteMessage message) throws TelegramApiException;
 }

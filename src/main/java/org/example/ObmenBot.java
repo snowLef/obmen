@@ -1,7 +1,7 @@
 package org.example;
 
 import org.example.interfaces.TelegramClient;
-import org.example.interfaces.UpdateProcessor;
+import org.example.service.UpdateRouter;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -13,10 +13,10 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Component
 public class ObmenBot extends TelegramLongPollingBot implements TelegramClient {
-    private final UpdateProcessor updateProcessor;
+    private final UpdateRouter updateRouter;
 
-    public ObmenBot(UpdateProcessor updateProcessor) {
-        this.updateProcessor = updateProcessor;
+    public ObmenBot(UpdateRouter updateRouter) {
+        this.updateRouter = updateRouter;
     }
 
     @Override
@@ -31,21 +31,22 @@ public class ObmenBot extends TelegramLongPollingBot implements TelegramClient {
 
     @Override
     public void onUpdateReceived(Update update) {
-        updateProcessor.process(update);
+        updateRouter.route(update);
+    }
+
+    // Реализация TelegramClient
+    @Override
+    public Message sendMessage(SendMessage message) throws TelegramApiException {
+        return execute(message);
     }
 
     @Override
-    public Message execute(SendMessage message) throws TelegramApiException {
-        return super.execute(message);
+    public void editMessage(EditMessageText message) throws TelegramApiException {
+        execute(message);
     }
 
     @Override
-    public void execute(EditMessageText message) throws TelegramApiException {
-        super.execute(message);
-    }
-
-    @Override
-    public void execute(DeleteMessage message) throws TelegramApiException {
-        super.execute(message);
+    public void deleteMessage(DeleteMessage message) throws TelegramApiException {
+        execute(message);
     }
 }

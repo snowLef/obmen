@@ -1,6 +1,7 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.interfaces.BotResponseSender;
 import org.example.model.Deal;
 import org.example.model.Money;
 import org.example.model.User;
@@ -16,14 +17,14 @@ public class ExchangeProcessor {
 
     private UserService userService;
     private CurrencyService currencyService;
-    private MessageSender messageSender;
+    private final BotResponseSender responseSender;
 
     public void approve(long chatId) {
         User user = userService.getUser(chatId);
         Deal deal = user.getCurrentDeal();
 
         if (deal == null) {
-            Message botMsg = messageSender.sendText(chatId, "Сделка не найдена.");
+            Message botMsg = responseSender.sendText(chatId, "Сделка не найдена.");
             userService.addMessageToDel(chatId, botMsg.getMessageId());
             return;
         }
@@ -38,7 +39,7 @@ public class ExchangeProcessor {
 
         if (deal.getDealType().isBuy()) {
             if (fromBalance < amountTo * rate) {
-                Message botMsg = messageSender.sendText(chatId, "Недостаточно средств: " + from);
+                Message botMsg = responseSender.sendText(chatId, "Недостаточно средств: " + from);
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
                 // Сбросим сделку
                 user.setCurrentDeal(null);
@@ -55,7 +56,7 @@ public class ExchangeProcessor {
 
         } else {
             if (toBalance < amountTo) {
-                Message botMsg = messageSender.sendText(chatId, "Недостаточно средств: " + to);
+                Message botMsg = responseSender.sendText(chatId, "Недостаточно средств: " + to);
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
                 return;
             }
@@ -68,7 +69,7 @@ public class ExchangeProcessor {
         }
 
         user = userService.getUser(chatId);
-        messageSender.sendText(chatId, """
+        responseSender.sendText(chatId, """
                 Сделка завершена ✅
                 Имя: %s
                 Сумма получена: %s %s
@@ -97,12 +98,12 @@ public class ExchangeProcessor {
         user.setMessages(null);
         user.setMessageToEdit(null);
         userService.save(user);
-        messageSender.sendText(chatId, "Сделка отменена.");
+        responseSender.sendText(chatId, "Сделка отменена.");
     }
 
     private void deleteMsgs(List<Integer> ids) {
         ids.forEach(
-                x -> messageSender.delete(x)
+                x -> responseSender.deleteMessage(x)
         );
     }
 
