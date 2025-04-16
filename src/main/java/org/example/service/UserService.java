@@ -14,10 +14,14 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class UserService {
 
     private UserRepository userRepository;
+
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     public User getUser(Long chatId) {
         return userRepository.findByChatId(chatId).orElse(null);

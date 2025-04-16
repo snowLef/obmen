@@ -1,6 +1,5 @@
 package org.example.handler;
 
-import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
 import org.example.service.DealService;
@@ -9,6 +8,7 @@ import org.example.service.UserService;
 import org.example.service.ExchangeProcessor;
 import org.example.state.Status;
 import org.example.ui.MenuService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -16,15 +16,39 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import static org.example.model.Money.*;
 
 @Component
-@RequiredArgsConstructor
 public class CallbackHandler {
 
-    User user;
-    private final UserService userService;
-    private final TelegramSender telegramSender;
-    private final ExchangeProcessor exchangeProcessor;
-    private final MenuService menuService;
-    private final DealService dealService;
+    private User user;
+    private UserService userService;
+    private TelegramSender telegramSender;
+    private ExchangeProcessor exchangeProcessor;
+    private MenuService menuService;
+    private DealService dealService;
+
+    @Autowired
+    public void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Autowired
+    public void setTelegramSender(TelegramSender telegramSender) {
+        this.telegramSender = telegramSender;
+    }
+
+    @Autowired
+    public void setExchangeProcessor(ExchangeProcessor exchangeProcessor) {
+        this.exchangeProcessor = exchangeProcessor;
+    }
+
+    @Autowired
+    public void setMenuService(MenuService menuService) {
+        this.menuService = menuService;
+    }
+
+    @Autowired
+    public void setDealService(DealService dealService) {
+        this.dealService = dealService;
+    }
 
     public void process(CallbackQuery callbackQuery) {
         long chatId = callbackQuery.getMessage().getChatId();

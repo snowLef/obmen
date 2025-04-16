@@ -12,8 +12,13 @@ public class DealService {
 
     private DealRepository dealRepository;
 
-    public Deal save(Deal deal) {
-        return dealRepository.save(deal);
+    @Autowired
+    public void setDealRepository(DealRepository dealRepository) {
+        this.dealRepository = dealRepository;
+    }
+
+    public void save(Deal deal) {
+        dealRepository.save(deal);
     }
 
 }

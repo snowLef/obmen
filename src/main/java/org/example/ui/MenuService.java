@@ -6,8 +6,10 @@ import org.example.interfaces.BotResponseSender;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.service.CurrencyService;
+import org.example.service.TelegramSender;
 import org.example.service.UserService;
 import org.example.util.MessageUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -28,8 +30,28 @@ public class MenuService {
 
     private UserService userService;
     private CurrencyService currencyService;
-    private final MessageUtils messageUtils;
-    private final BotResponseSender responseSender;
+    private MessageUtils messageUtils;
+    private TelegramSender telegramSender;
+
+    @Autowired
+    public void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Autowired
+    public void setCurrencyService(CurrencyService currencyService) {
+        this.currencyService = currencyService;
+    }
+
+    @Autowired
+    public void setMessageUtils(MessageUtils messageUtils) {
+        this.messageUtils = messageUtils;
+    }
+
+    @Autowired
+    public void setTelegramSender(TelegramSender telegramSender) {
+        this.telegramSender = telegramSender;
+    }
 
     public void sendMainMenu(long chatId) {
         SendMessage message = new SendMessage();
@@ -78,7 +100,7 @@ public class MenuService {
 
         message.setReplyMarkup(keyboardMarkup);
 
-        Message msg = responseSender.sendMsg(message);
+        Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
@@ -111,7 +133,7 @@ public class MenuService {
         markup.setKeyboard(List.of(row));
         message.setReplyMarkup(markup);
 
-        Message msg = responseSender.sendMsg(message);
+        Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
@@ -123,7 +145,7 @@ public class MenuService {
             text.append("%s: %s\n".formatted(currency.getName(), formattedAmount));
         });
 
-        responseSender.sendText(chatId, text.toString());
+        telegramSender.sendText(chatId, text.toString());
     }
 
     private InlineKeyboardButton createButton(String text, String callbackData) {
@@ -151,7 +173,7 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        Message msg = responseSender.sendMsg(message);
+        Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
         userService.addMessageToEdit(chatId, msg.getMessageId());
         return msg;
@@ -188,7 +210,7 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        return responseSender.sendMsg(message);
+        return telegramSender.send(message);
     }
 
     public Message sendSelectCurrencyType(long chatId) {
@@ -211,7 +233,7 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        return responseSender.sendMsg(message);
+        return telegramSender.send(message);
     }
 
 }

@@ -1,28 +1,34 @@
 package org.example.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.ObmenBot;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class TelegramSenderImpl implements TelegramSender {
 
-    private final ObmenBot obmenBot;
+    private ObmenBot obmenBot;
+
+    @Autowired
+    public void setObmenBot(ObmenBot obmenBot) {
+        this.obmenBot = obmenBot;
+    }
 
     @Override
-    public void send(SendMessage message) {
+    public Message send(SendMessage message) {
         try {
-            obmenBot.execute(message);
+            return obmenBot.execute(message);
         } catch (TelegramApiException e) {
             log.error("Failed to send message", e);
         }
+        return null;
     }
 
     @Override
@@ -56,4 +62,14 @@ public class TelegramSenderImpl implements TelegramSender {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public void deleteMessage(Long chatId, Integer messageToDelete) {
+        try {
+            obmenBot.deleteMessage(new DeleteMessage(chatId.toString(), messageToDelete));
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

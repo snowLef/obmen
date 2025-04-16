@@ -5,10 +5,9 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 public interface TelegramSender {
-    void send(SendMessage message);
+    Message send(SendMessage message);
     void send(EditMessageText message);
     Message sendText(Long chatId, String text);
-
     void editMsg(Long chatId, Integer messageToEdit, String s);
-    // Можно добавить еще методы, если используешь другие типы сообщений
+    void deleteMessage(Long chatId, Integer messageToDelete);
 }

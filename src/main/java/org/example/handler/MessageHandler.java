@@ -1,12 +1,12 @@
 package org.example.handler;
 
-import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
 import org.example.service.TelegramSender;
 import org.example.service.UserService;
 import org.example.state.Status;
 import org.example.ui.MenuService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -17,11 +17,25 @@ import static org.example.model.DealType.*;
 import static org.example.model.Money.*;
 
 @Component
-@RequiredArgsConstructor
 public class MessageHandler {
-    private final UserService userService;
-    private final TelegramSender telegramSender;
-    private final MenuService menuService;
+    private UserService userService;
+    private TelegramSender telegramSender;
+    private MenuService menuService;
+
+    @Autowired
+    public void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Autowired
+    public void setTelegramSender(TelegramSender telegramSender) {
+        this.telegramSender = telegramSender;
+    }
+
+    @Autowired
+    public void setMenuService(MenuService menuService) {
+        this.menuService = menuService;
+    }
 
     User user;
     private final Map<String, Runnable> commandMap = new HashMap<>();
@@ -109,7 +123,11 @@ public class MessageHandler {
         } else {
             try {
                 double rate = Double.parseDouble(text.replace(",", "."));
-                user.getCurrentDeal().setAmountFrom((double) Math.round(user.getCurrentDeal().getAmountTo() * rate));
+                if (user.getCurrentDeal().getDealType() == SELL) {
+                    user.getCurrentDeal().setAmountTo((double) Math.round(user.getCurrentDeal().getAmountFrom() * rate));
+                } else if (user.getCurrentDeal().getDealType() == BUY) {
+                    user.getCurrentDeal().setAmountFrom((double) Math.round(user.getCurrentDeal().getAmountTo() * rate));
+                }
                 user.getCurrentDeal().setExchangeRate(rate);
                 user.setStatus(Status.AWAITING_APPROVE);
                 userService.save(user);
@@ -130,8 +148,13 @@ public class MessageHandler {
             menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
         } else {
             userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
-            userService.addMessageToDel(chatId, botMsg.getMessageId());
+            if (user.getCurrentDeal().getDealType() == SELL) {
+                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().getName()));
+                userService.addMessageToDel(chatId, botMsg.getMessageId());
+            } else if (user.getCurrentDeal().getDealType() == BUY) {
+                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+                userService.addMessageToDel(chatId, botMsg.getMessageId());
+            }
             userService.addMessageToDel(chatId, msgId);
         }
     }
@@ -150,9 +173,15 @@ public class MessageHandler {
                 userService.addMessageToDel(chatId, msg.getMessageId());
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
-                user.getCurrentDeal().setAmountTo(amount);
-                Message message = telegramSender.sendText(chatId, "Введите курс: ");
+
+                if (user.getCurrentDeal().getDealType() == SELL) {
+                    user.getCurrentDeal().setAmountFrom(amount);
+                } else if (user.getCurrentDeal().getDealType() == BUY) {
+                    user.getCurrentDeal().setAmountTo(amount);
+                }
+
                 userService.save(user);
+                Message message = telegramSender.sendText(chatId, "Введите курс: ");
                 userService.addMessageToDel(chatId, message.getMessageId());
             }
 
