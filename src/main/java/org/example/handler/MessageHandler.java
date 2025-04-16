@@ -2,8 +2,8 @@ package org.example.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
-import org.example.interfaces.BotResponseSender;
 import org.example.model.*;
+import org.example.service.TelegramSender;
 import org.example.service.UserService;
 import org.example.state.Status;
 import org.example.ui.MenuService;
@@ -20,7 +20,7 @@ import static org.example.model.Money.*;
 @RequiredArgsConstructor
 public class MessageHandler {
     private final UserService userService;
-    private final BotResponseSender responseSender;
+    private final TelegramSender telegramSender;
     private final MenuService menuService;
 
     User user;
@@ -116,7 +116,7 @@ public class MessageHandler {
                 menuService.sendApproveMenu(chatId);
                 userService.addMessageToDel(chatId, msgId);
             } catch (NumberFormatException e) {
-                Message botMsg = responseSender.sendText(chatId, "Неверный формат курса.");
+                Message botMsg = telegramSender.sendText(chatId, "Неверный формат курса.");
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
         }
@@ -130,7 +130,7 @@ public class MessageHandler {
             menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
         } else {
             userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            Message botMsg = responseSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+            Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
             userService.addMessageToDel(chatId, botMsg.getMessageId());
             userService.addMessageToDel(chatId, msgId);
         }
@@ -151,14 +151,14 @@ public class MessageHandler {
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                 user.getCurrentDeal().setAmountTo(amount);
-                Message message = responseSender.sendText(chatId, "Введите курс: ");
+                Message message = telegramSender.sendText(chatId, "Введите курс: ");
                 userService.save(user);
                 userService.addMessageToDel(chatId, message.getMessageId());
             }
 
             userService.addMessageToDel(chatId, msgId);
         } catch (NumberFormatException e) {
-            Message botMsg = responseSender.sendText(chatId, "Неверный формат суммы.");
+            Message botMsg = telegramSender.sendText(chatId, "Неверный формат суммы.");
             userService.addMessageToDel(chatId, botMsg.getMessageId());
         }
     }
@@ -167,7 +167,7 @@ public class MessageHandler {
         userService.startDeal(chatId, from, to, dealType);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = responseSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = telegramSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
@@ -178,7 +178,7 @@ public class MessageHandler {
         deal.setDealType(BUY);
         userService.saveUserCurrentDeal(chatId, deal);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = responseSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = telegramSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 }

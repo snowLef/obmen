@@ -2,9 +2,9 @@ package org.example.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
-import org.example.interfaces.BotResponseSender;
 import org.example.model.*;
 import org.example.service.DealService;
+import org.example.service.TelegramSender;
 import org.example.service.UserService;
 import org.example.service.ExchangeProcessor;
 import org.example.state.Status;
@@ -21,7 +21,7 @@ public class CallbackHandler {
 
     User user;
     private final UserService userService;
-    private final BotResponseSender responseSender;
+    private final TelegramSender telegramSender;
     private final ExchangeProcessor exchangeProcessor;
     private final MenuService menuService;
     private final DealService dealService;
@@ -57,7 +57,7 @@ public class CallbackHandler {
             case "division" -> handleAmountTypeSelection(chatId, CurrencyType.DIVISION);
             case "multiplication" -> handleAmountTypeSelection(chatId, CurrencyType.MULTIPLICATION);
 
-            default -> responseSender.sendText(chatId, "Неизвестная команда.");
+            default -> telegramSender.sendText(chatId, "Неизвестная команда.");
         }
     }
 
@@ -66,12 +66,12 @@ public class CallbackHandler {
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
             deal.setMoneyTo(money);
             userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
-            responseSender.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
             menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
         } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
             deal.setMoneyFrom(money);
-            responseSender.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());
-            Message message = responseSender.sendText(chatId, "Введите сумму: ");
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());
+            Message message = telegramSender.sendText(chatId, "Введите сумму: ");
             user.setStatus(Status.AWAITING_DEAL_AMOUNT);
             userService.save(user);
             userService.addMessageToDel(chatId, message.getMessageId());
@@ -96,7 +96,7 @@ public class CallbackHandler {
 
             user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
             userService.save(user);
-            responseSender.editMsg(chatId, user.getMessageToEdit(), "Сумма %s %s"
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Сумма %s %s"
                     .formatted(user.getCurrentDeal().getCurrentAmount(), currentCurrency)
             );
             Message message = menuService.sendSelectCurrencyType(chatId);
@@ -110,9 +110,9 @@ public class CallbackHandler {
         if (user.getStatus().equals(Status.AWAITING_EXCHANGE_RATE_TYPE)) {
             user.setCurrencyType(type);
             user.setStatus(Status.AWAITING_EXCHANGE_RATE);
-            responseSender.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
             userService.save(user);
-            Message msg = responseSender.sendText(chatId, "Введите курс:");
+            Message msg = telegramSender.sendText(chatId, "Введите курс:");
             userService.addMessageToDel(chatId, msg.getMessageId());
         }
     }
