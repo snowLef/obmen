@@ -1,7 +1,10 @@
 package org.example.util;
 
 import lombok.RequiredArgsConstructor;
+import org.example.interfaces.MessageSender;
+import org.example.interfaces.TelegramOperations;
 import org.example.model.User;
+import org.example.service.TelegramService;
 import org.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,9 +19,8 @@ import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class MessageUtils {
-
-    private final ObmenBot bot;
+public class MessageUtils implements MessageSender {
+    private final TelegramOperations telegramService;
     private final UserService userService;
 
     public Message sendText(long chatId, String text) {
@@ -30,20 +32,11 @@ public class MessageUtils {
     }
 
     public Message sendMsg(SendMessage message) {
-        try {
-            return bot.execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace(); // лучше логировать
-        }
-        return null;
+        return telegramService.send(message);
     }
 
     private void del(DeleteMessage msg) {
-        try {
-            bot.execute(msg);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
+        telegramService.delete(msg);
     }
 
     public void deleteMessages(Long chatId) {
@@ -90,16 +83,10 @@ public class MessageUtils {
         EditMessageText editMessage = new EditMessageText();
         editMessage.setChatId(chatId.toString());
         editMessage.setText(text);
-
-        editMessage.setMessageId(messageId); // ID сообщения, которое бот хочет изменить
-
+        editMessage.setMessageId(messageId);
         editMessage.setReplyMarkup(null);
 
-        try {
-            bot.execute(editMessage);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
+        telegramService.edit(editMessage);
     }
 
 }

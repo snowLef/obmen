@@ -1,8 +1,9 @@
 package org.example.handler;
 
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
+import org.example.interfaces.CallbackProcessor;
+import org.example.interfaces.MessageSender;
 import org.example.model.*;
 import org.example.service.DealService;
 import org.example.service.UserService;
@@ -10,7 +11,6 @@ import org.example.service.ExchangeProcessor;
 import org.example.state.Status;
 import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -19,7 +19,8 @@ import static org.example.model.Money.*;
 
 @Component
 @RequiredArgsConstructor
-public class CallbackHandler {
+public class CallbackHandler implements CallbackProcessor {
+    private final MessageSender messageSender;
 
     User user;
 
@@ -29,7 +30,8 @@ public class CallbackHandler {
     private final MenuService menuService;
     private final DealService dealService;
 
-    public void handle(CallbackQuery callbackQuery) {
+    @Override
+    public void process(CallbackQuery callbackQuery) {
         long chatId = callbackQuery.getMessage().getChatId();
         String data = callbackQuery.getData();
         user = userService.getOrCreate(chatId);

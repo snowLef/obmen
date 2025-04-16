@@ -2,12 +2,15 @@ package org.example.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
+import org.example.interfaces.MessageProcessor;
+import org.example.interfaces.MessageSender;
 import org.example.model.*;
 import org.example.service.UserService;
 import org.example.state.Status;
 import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.HashMap;
@@ -18,8 +21,8 @@ import static org.example.model.Money.*;
 
 @Component
 @RequiredArgsConstructor
-public class MessageHandler {
-
+public class MessageHandler implements MessageProcessor {
+    private final MessageSender messageSender;
     private final UserService userService;
     private final MessageUtils messageUtils;
     private final MenuService menuService;
@@ -29,7 +32,8 @@ public class MessageHandler {
     private long chatId;
     private Integer msgId;
 
-    public void handle(Message message) {
+    @Override
+    public void process(Message message) {
         if (message == null || message.getText() == null) return;
 
         this.chatId = message.getChatId();
