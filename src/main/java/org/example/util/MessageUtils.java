@@ -4,16 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.example.interfaces.MessageSender;
 import org.example.interfaces.TelegramOperations;
 import org.example.model.User;
-import org.example.service.TelegramService;
 import org.example.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.example.ObmenBot;
 
 import java.util.List;
 

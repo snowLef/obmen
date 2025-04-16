@@ -3,7 +3,6 @@ package org.example.handler;
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.interfaces.CallbackProcessor;
-import org.example.interfaces.MessageSender;
 import org.example.model.*;
 import org.example.service.DealService;
 import org.example.service.UserService;
@@ -20,7 +19,6 @@ import static org.example.model.Money.*;
 @Component
 @RequiredArgsConstructor
 public class CallbackHandler implements CallbackProcessor {
-    private final MessageSender messageSender;
 
     User user;
 

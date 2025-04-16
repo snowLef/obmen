@@ -1,21 +1,18 @@
 package org.example;
 
-import org.example.util.UpdateFacade;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.example.handler.CallbackHandler;
+import org.example.handler.MessageHandler;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 @Component
+@RequiredArgsConstructor
 public class ObmenBot extends TelegramLongPollingBot {
 
-    private final UpdateFacade updateFacade;
-
-    @Autowired
-    public ObmenBot(UpdateFacade updateFacade) {
-        this.updateFacade = updateFacade;
-    }
-
+    private final MessageHandler messageHandler;
+    private final CallbackHandler callbackHandler;
 
     @Override
     public String getBotUsername() {
@@ -27,18 +24,13 @@ public class ObmenBot extends TelegramLongPollingBot {
         return System.getenv("BOT_TOKEN");
     }
 
-//    @Override
-//    public void onUpdateReceived(Update update) {
-//        if (update.hasMessage() && update.getMessage().hasText()) {
-//            updateProcessor.processMessage(update.getMessage());
-//        } else if (update.hasCallbackQuery()) {
-//            updateProcessor.processCallbackQuery(update.getCallbackQuery());
-//        }
-//    }
-
     @Override
     public void onUpdateReceived(Update update) {
-        updateFacade.process(update);
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            messageHandler.process(update.getMessage());
+        } else if (update.hasCallbackQuery()) {
+            callbackHandler.process(update.getCallbackQuery());
+        }
     }
 
 }

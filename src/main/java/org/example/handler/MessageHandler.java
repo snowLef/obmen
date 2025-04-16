@@ -22,7 +22,6 @@ import static org.example.model.Money.*;
 @Component
 @RequiredArgsConstructor
 public class MessageHandler implements MessageProcessor {
-    private final MessageSender messageSender;
     private final UserService userService;
     private final MessageUtils messageUtils;
     private final MenuService menuService;
