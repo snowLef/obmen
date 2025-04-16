@@ -1,11 +1,15 @@
 package org.example.ui;
 
+import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.Money;
 import org.example.model.User;
+import org.example.repository.CurrencyRepository;
 import org.example.service.CurrencyService;
 import org.example.service.UserService;
 import org.example.util.MessageUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -19,9 +23,16 @@ import java.util.List;
 
 import static org.example.model.Money.*;
 
+@Service
+@RequiredArgsConstructor
 public class MenuService {
 
-    public static void sendMainMenu(long chatId) {
+    @Autowired
+    private MessageUtils messageUtils;
+    private UserService userService;
+    private CurrencyService currencyService;
+
+    public void sendMainMenu(long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("Выберите опцию:");
@@ -68,12 +79,12 @@ public class MenuService {
 
         message.setReplyMarkup(keyboardMarkup);
 
-        Message msg = MessageUtils.sendMsg(message);
-        UserService.addMessageToDel(chatId, msg.getMessageId());
+        Message msg = messageUtils.sendMsg(message);
+        userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
-    public static void sendApproveMenu(long chatId) {
-        User user = UserService.getUser(chatId);
+    public void sendApproveMenu(long chatId) {
+        User user = userService.getUser(chatId);
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText("""
@@ -101,30 +112,29 @@ public class MenuService {
         markup.setKeyboard(List.of(row));
         message.setReplyMarkup(markup);
 
-        Message msg = MessageUtils.sendMsg(message);
-        UserService.addMessageToDel(chatId, msg.getMessageId());
+        Message msg = messageUtils.sendMsg(message);
+        userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
-    public static void sendBalance(long chatId) {
+    public void sendBalance(long chatId) {
         StringBuilder text = new StringBuilder("Баланс:\n");
         Arrays.stream(Money.values()).forEach(currency -> {
-            double amount = CurrencyService.getBalance(currency);
-            String formattedAmount = MessageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
+            double amount = currencyService.getBalance(currency);
+            String formattedAmount = messageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
             text.append("%s: %s\n".formatted(currency.getName(), formattedAmount));
         });
 
-        MessageUtils.sendText(chatId, text.toString());
+        messageUtils.sendText(chatId, text.toString());
     }
 
-    private static InlineKeyboardButton createButton(String text, String callbackData) {
+    private InlineKeyboardButton createButton(String text, String callbackData) {
         InlineKeyboardButton button = new InlineKeyboardButton();
         button.setText(text);
         button.setCallbackData(callbackData);
         return button;
     }
 
-    public static Message sendSelectCurrency(long chatId, String text) {
-        //List<Currency> currencies = CurrencyService.getAllCurrency();
+    public Message sendSelectCurrency(long chatId, String text) {
         List<Money> currencies = List.of(USDT, USD, EUR, USDW, YE);
         List<InlineKeyboardButton> buttons = currencies.stream()
                 .map(x -> createButton(x.getName(), x.getName()))
@@ -142,14 +152,14 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        Message msg = MessageUtils.sendMsg(message);
-        UserService.addMessageToDel(chatId, msg.getMessageId());
-        UserService.addMessageToEdit(chatId, msg.getMessageId());
+        Message msg = messageUtils.sendMsg(message);
+        userService.addMessageToDel(chatId, msg.getMessageId());
+        userService.addMessageToEdit(chatId, msg.getMessageId());
         return msg;
     }
 
-    public static Message sendSelectAmountType(long chatId) {
-        User user = UserService.getUser(chatId);
+    public Message sendSelectAmountType(long chatId) {
+        User user = userService.getUser(chatId);
         InlineKeyboardButton buttonGive = createButton("%s %s Забрать"
                         .formatted(
                                 user.getCurrentDeal().getCurrentAmount(),
@@ -179,10 +189,10 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        return MessageUtils.sendMsg(message);
+        return messageUtils.sendMsg(message);
     }
 
-    public static Message sendSelectCurrencyType(long chatId) {
+    public Message sendSelectCurrencyType(long chatId) {
         InlineKeyboardButton buttonGive = createButton("/курс", "division");
         InlineKeyboardButton buttonReceive = createButton("*курс", "multiplication");
 
@@ -202,7 +212,7 @@ public class MenuService {
         markup.setKeyboard(keyboard);
         message.setReplyMarkup(markup);
 
-        return MessageUtils.sendMsg(message);
+        return messageUtils.sendMsg(message);
     }
 
 }

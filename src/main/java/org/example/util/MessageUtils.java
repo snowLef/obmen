@@ -1,5 +1,6 @@
 package org.example.util;
 
+import lombok.RequiredArgsConstructor;
 import org.example.model.User;
 import org.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,18 +15,13 @@ import org.example.ObmenBot;
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class MessageUtils {
 
-    public static ObmenBot botInstance;
+    private final ObmenBot bot;
     private final UserService userService;
 
-    @Autowired
-    public MessageUtils(ObmenBot obmenBot, UserService userService) {
-        this.botInstance = obmenBot;
-        this.userService = userService;
-    }
-
-    public static Message sendText(long chatId, String text) {
+    public Message sendText(long chatId, String text) {
         SendMessage message = SendMessage.builder()
                 .chatId(String.valueOf(chatId))
                 .text(text)
@@ -33,24 +29,24 @@ public class MessageUtils {
         return sendMsg(message);
     }
 
-    public static Message sendMsg(SendMessage message) {
+    public Message sendMsg(SendMessage message) {
         try {
-            return botInstance.execute(message);
+            return bot.execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace(); // лучше логировать
         }
         return null;
     }
 
-    private static void del(DeleteMessage msg) {
+    private void del(DeleteMessage msg) {
         try {
-            botInstance.execute(msg);
+            bot.execute(msg);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void deleteMessages(Long chatId) {
+    public void deleteMessages(Long chatId) {
         User user = userService.getUser(chatId);
         List<Integer> messages = user.getMessages();
 
@@ -62,7 +58,7 @@ public class MessageUtils {
         });
     }
 
-    public static String formatWithSpacesAndDecimals(String input) {
+    public String formatWithSpacesAndDecimals(String input) {
         // 1. Заменим запятую на точку для парсинга
         String normalized = input.replace(",", ".");
 
@@ -90,7 +86,7 @@ public class MessageUtils {
         return spaced.reverse() + fractionalPart;
     }
 
-    public static void editMsg(Long chatId, Integer messageId, String text) {
+    public void editMsg(Long chatId, Integer messageId, String text) {
         EditMessageText editMessage = new EditMessageText();
         editMessage.setChatId(chatId.toString());
         editMessage.setText(text);
@@ -100,7 +96,7 @@ public class MessageUtils {
         editMessage.setReplyMarkup(null);
 
         try {
-            botInstance.execute(editMessage);
+            bot.execute(editMessage);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }

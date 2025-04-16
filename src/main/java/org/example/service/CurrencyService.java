@@ -1,55 +1,34 @@
 package org.example.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.model.Currency;
 import org.example.model.Money;
-import org.hibernate.query.Query;
+import org.example.repository.CurrencyRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.util.List;
-
+@Service
+@RequiredArgsConstructor
 public class CurrencyService {
 
-    public static void save(Currency currency) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.save(currency);
-            return null;
-        });
-    }
+    @Autowired
+    private CurrencyRepository currencyRepository;
 
-    public static void saveOrUpdate(Currency currency) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.saveOrUpdate(currency);
-            return null;
-        });
-    }
 
-    public static void updateBalance(Money money, double newBalance) {
+    public void updateBalance(Money money, double newBalance) {
         Currency currency = getCurrency(money);
         currency.setBalance(newBalance);
-        saveOrUpdate(currency);
+        currencyRepository.save(currency);
     }
 
-    public static double getBalance(Money money) {
+    public double getBalance(Money money) {
         Currency currency = getCurrency(money);
         return currency != null ? currency.getBalance() : 0.0;
     }
 
-    public static Currency getCurrency(Money name) {
-        return HibernateUtil.executeInTransaction(session -> {
-            String hql = "FROM Currency c WHERE c.name = :name";
-            Query<Currency> query = session.createQuery(hql, Currency.class);
-            query.setParameter("name", name.name());
-
-            return query.uniqueResult();
-        });
-    }
-
-    public static List<Currency> getAllCurrency() {
-        return HibernateUtil.executeInTransaction(session -> {
-            String hql = "FROM Currency c";
-            Query<Currency> query = session.createQuery(hql, Currency.class);
-
-            return query.getResultList();
-        });
+    public Currency getCurrency(Money name) {
+        return currencyRepository.findByName(name.name())
+                .orElse(null);
     }
 
 }

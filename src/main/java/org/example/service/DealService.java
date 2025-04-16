@@ -1,21 +1,20 @@
 package org.example.service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.model.Deal;
+import org.example.repository.DealRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
+@Service
+@RequiredArgsConstructor
 public class DealService {
 
-    public static void save(Deal deal) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.save(deal);
-            return null;
-        });
-    }
+    @Autowired
+    private DealRepository dealRepository;
 
-    public static void saveOrUpdate(Deal deal) {
-        HibernateUtil.executeInTransaction(session -> {
-            session.saveOrUpdate(deal);
-            return null;
-        });
+    public Deal save(Deal deal) {
+        return dealRepository.save(deal);
     }
 
 }

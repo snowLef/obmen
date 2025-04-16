@@ -21,6 +21,8 @@ import static org.example.model.Money.*;
 public class MessageHandler {
 
     private final UserService userService;
+    private final MessageUtils messageUtils;
+    private final MenuService menuService;
 
     User user;
     private final Map<String, Runnable> commandMap = new HashMap<>();
@@ -62,12 +64,12 @@ public class MessageHandler {
         commandMap.put("Купить Tether", () -> start(RUB, USDT, BUY));
         commandMap.put("Продать Tether", () -> start(USDT, RUB, SELL));
 
-        commandMap.put("Меню", () -> MenuService.sendMainMenu(chatId));
-        commandMap.put("/start", () -> MenuService.sendMainMenu(chatId));
+        commandMap.put("Меню", () -> menuService.sendMainMenu(chatId));
+        commandMap.put("/start", () -> menuService.sendMainMenu(chatId));
 
         commandMap.put("Сложный обмен", () -> customChange(chatId, msgId));
 
-        commandMap.put("Баланс", () -> MenuService.sendBalance(chatId));
+        commandMap.put("Баланс", () -> menuService.sendBalance(chatId));
     }
 
     private void handleIdleState(String text) {
@@ -75,7 +77,7 @@ public class MessageHandler {
         if (command != null) {
             command.run();
         } else {
-            MenuService.sendMainMenu(chatId);
+            menuService.sendMainMenu(chatId);
         }
     }
 
@@ -104,7 +106,7 @@ public class MessageHandler {
 
             userService.save(user);
             userService.addMessageToDel(chatId, msgId);
-            MenuService.sendApproveMenu(chatId);
+            menuService.sendApproveMenu(chatId);
         } else {
             try {
                 double rate = Double.parseDouble(text.replace(",", "."));
@@ -112,10 +114,10 @@ public class MessageHandler {
                 user.getCurrentDeal().setExchangeRate(rate);
                 user.setStatus(Status.AWAITING_APPROVE);
                 userService.save(user);
-                MenuService.sendApproveMenu(chatId);
+                menuService.sendApproveMenu(chatId);
                 userService.addMessageToDel(chatId, msgId);
             } catch (NumberFormatException e) {
-                Message botMsg = MessageUtils.sendText(chatId, "Неверный формат курса.");
+                Message botMsg = messageUtils.sendText(chatId, "Неверный формат курса.");
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
         }
@@ -126,10 +128,10 @@ public class MessageHandler {
         if (user.getCurrentDeal().getIsCustom()) {
             userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
             userService.addMessageToDel(chatId, msgId);
-            MenuService.sendSelectCurrency(chatId, "Выберите валюту получения");
+            menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
         } else {
             userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            Message botMsg = MessageUtils.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+            Message botMsg = messageUtils.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
             userService.addMessageToDel(chatId, botMsg.getMessageId());
             userService.addMessageToDel(chatId, msgId);
         }
@@ -143,21 +145,21 @@ public class MessageHandler {
                 user.setStatus(Status.AWAITING_SELECT_AMOUNT);
                 user.getCurrentDeal().setCurrentAmount(amount);
                 userService.save(user);
-                Message msg = MenuService.sendSelectAmountType(chatId);
+                Message msg = menuService.sendSelectAmountType(chatId);
                 user.setMessageToEdit(msg.getMessageId());
                 userService.save(user);
                 userService.addMessageToDel(chatId, msg.getMessageId());
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                 user.getCurrentDeal().setAmountTo(amount);
-                Message message = MessageUtils.sendText(chatId, "Введите курс: ");
+                Message message = messageUtils.sendText(chatId, "Введите курс: ");
                 userService.save(user);
                 userService.addMessageToDel(chatId, message.getMessageId());
             }
 
             userService.addMessageToDel(chatId, msgId);
         } catch (NumberFormatException e) {
-            Message botMsg = MessageUtils.sendText(chatId, "Неверный формат суммы.");
+            Message botMsg = messageUtils.sendText(chatId, "Неверный формат суммы.");
             userService.addMessageToDel(chatId, botMsg.getMessageId());
         }
     }
@@ -166,7 +168,7 @@ public class MessageHandler {
         userService.startDeal(chatId, from, to, dealType);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = MessageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
@@ -177,7 +179,7 @@ public class MessageHandler {
         deal.setDealType(BUY);
         userService.saveUserCurrentDeal(chatId, deal);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = MessageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
