@@ -1,5 +1,7 @@
 package org.example.handler;
 
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
 import org.example.service.DealService;
@@ -8,19 +10,29 @@ import org.example.service.ExchangeProcessor;
 import org.example.state.Status;
 import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import static org.example.model.Money.*;
 
+@Component
+@RequiredArgsConstructor
 public class CallbackHandler {
 
     User user;
 
+    private final UserService userService;
+    private final MessageUtils messageUtils;
+    private final ExchangeProcessor exchangeProcessor;
+    private final MenuService menuService;
+    private final DealService dealService;
+
     public void handle(CallbackQuery callbackQuery) {
         long chatId = callbackQuery.getMessage().getChatId();
         String data = callbackQuery.getData();
-        user = initUserIfNeeded(chatId);
+        user = userService.getOrCreate(chatId);
 
         System.out.println("[" + chatId + "] Статус: " + user.getStatus() + ", CallBackData: " + data);
 
@@ -31,15 +43,15 @@ public class CallbackHandler {
             case "UsdT" -> handleCurrencySelection(chatId, USDT);
             case "Y.e." -> handleCurrencySelection(chatId, YE);
 
-            case BotCommands.BALANCE -> MenuService.sendBalance(chatId);
+            case BotCommands.BALANCE -> menuService.sendBalance(chatId);
 
             case "yes" -> {
-                ExchangeProcessor.approve(chatId);
-                MenuService.sendMainMenu(chatId);
+                exchangeProcessor.approve(chatId);
+                menuService.sendMainMenu(chatId);
             }
             case "no" -> {
-                ExchangeProcessor.cancel(chatId);
-                MenuService.sendMainMenu(chatId);
+                exchangeProcessor.cancel(chatId);
+                menuService.sendMainMenu(chatId);
             }
 
             case "give" -> handleAmountSelection(chatId, AmountType.GIVE);
@@ -48,7 +60,7 @@ public class CallbackHandler {
             case "division" -> handleAmountTypeSelection(chatId, CurrencyType.DIVISION);
             case "multiplication" -> handleAmountTypeSelection(chatId, CurrencyType.MULTIPLICATION);
 
-            default -> MessageUtils.sendText(chatId, "Неизвестная команда.");
+            default -> messageUtils.sendText(chatId, "Неизвестная команда.");
         }
     }
 
@@ -56,18 +68,18 @@ public class CallbackHandler {
         Deal deal = user.getCurrentDeal();
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
             deal.setMoneyTo(money);
-            UserService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
-            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
-            MenuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
+            userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
+            messageUtils.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
+            menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
         } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
             deal.setMoneyFrom(money);
-            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());
-            Message message = MessageUtils.sendText(chatId, "Введите сумму: ");
+            messageUtils.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());
+            Message message = messageUtils.sendText(chatId, "Введите сумму: ");
             user.setStatus(Status.AWAITING_DEAL_AMOUNT);
-            UserService.saveOrUpdate(user);
-            UserService.addMessageToDel(chatId, message.getMessageId());
+            userService.save(user);
+            userService.addMessageToDel(chatId, message.getMessageId());
         }
-        DealService.saveOrUpdate(deal);
+        dealService.save(deal);
     }
 
     private void handleAmountSelection(Long chatId, AmountType type) {
@@ -86,14 +98,14 @@ public class CallbackHandler {
             }
 
             user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
-            UserService.save(user);
-            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Сумма %s %s"
+            userService.save(user);
+            messageUtils.editMsg(chatId, user.getMessageToEdit(), "Сумма %s %s"
                     .formatted(user.getCurrentDeal().getCurrentAmount(), currentCurrency)
             );
-            Message message = MenuService.sendSelectCurrencyType(chatId);
+            Message message = menuService.sendSelectCurrencyType(chatId);
             user.setMessageToEdit(message.getMessageId());
-            UserService.saveOrUpdate(user);
-            UserService.addMessageToDel(chatId, message.getMessageId());
+            userService.save(user);
+            userService.addMessageToDel(chatId, message.getMessageId());
         }
     }
 
@@ -101,20 +113,11 @@ public class CallbackHandler {
         if (user.getStatus().equals(Status.AWAITING_EXCHANGE_RATE_TYPE)) {
             user.setCurrencyType(type);
             user.setStatus(Status.AWAITING_EXCHANGE_RATE);
-            MessageUtils.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
-            UserService.save(user);
-            Message msg = MessageUtils.sendText(chatId, "Введите курс:");
-            UserService.addMessageToDel(chatId, msg.getMessageId());
+            messageUtils.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
+            userService.save(user);
+            Message msg = messageUtils.sendText(chatId, "Введите курс:");
+            userService.addMessageToDel(chatId, msg.getMessageId());
         }
-    }
-
-    private User initUserIfNeeded(long chatId) {
-        User user = UserService.getUser(chatId);
-        if (user == null) {
-            user = new User(chatId, Status.IDLE);
-            UserService.save(user);
-        }
-        return user;
     }
 
 }

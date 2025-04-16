@@ -1,11 +1,13 @@
 package org.example.handler;
 
+import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
-import org.example.state.Status;
 import org.example.service.UserService;
+import org.example.state.Status;
 import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.HashMap;
@@ -14,10 +16,15 @@ import java.util.Map;
 import static org.example.model.DealType.*;
 import static org.example.model.Money.*;
 
+@Component
+@RequiredArgsConstructor
 public class MessageHandler {
 
-    User user;
+    private final UserService userService;
+    private final MessageUtils messageUtils;
+    private final MenuService menuService;
 
+    User user;
     private final Map<String, Runnable> commandMap = new HashMap<>();
     private long chatId;
     private Integer msgId;
@@ -29,7 +36,7 @@ public class MessageHandler {
         this.msgId = message.getMessageId();
         String text = message.getText();
 
-        user = initUserIfNeeded(chatId);
+        user = userService.getOrCreate(chatId);
         Status status = user.getStatus();
 
         if (commandMap.isEmpty()) initCommandMap();
@@ -42,42 +49,27 @@ public class MessageHandler {
             case AWAITING_DEAL_AMOUNT -> handleDealAmount(text);
             case AWAITING_EXCHANGE_RATE -> handleExchangeRate(user, text);
 
-            case AWAITING_CUSTOM_APPROVE -> {
-            }
-            case AWAITING_FIRST_CURRENCY -> {
-            }
-            case AWAITING_SECOND_CURRENCY -> {
-            }
             default -> {
             }
         }
     }
 
-    private User initUserIfNeeded(long chatId) {
-        User user = UserService.getUser(chatId);
-        if (user == null) {
-            user = new User(chatId, Status.IDLE);
-            UserService.save(user);
-        }
-        return user;
-    }
-
     private void initCommandMap() {
         commandMap.put("Купить Доллар", () -> start(RUB, USD, BUY));
-        commandMap.put("Продать Доллар", () -> start(RUB, USD, SELL));
+        commandMap.put("Продать Доллар", () -> start(USD, RUB, SELL));
         commandMap.put("Купить Евро", () -> start(RUB, EUR, BUY));
-        commandMap.put("Продать Евро", () -> start(RUB, EUR, SELL));
+        commandMap.put("Продать Евро", () -> start(EUR, RUB, SELL));
         commandMap.put("Купить Белый Доллар", () -> start(RUB, USDW, BUY));
-        commandMap.put("Продать Белый Доллар", () -> start(RUB, USDW, SELL));
+        commandMap.put("Продать Белый Доллар", () -> start(USDW, RUB, SELL));
         commandMap.put("Купить Tether", () -> start(RUB, USDT, BUY));
-        commandMap.put("Продать Tether", () -> start(RUB, USDT, SELL));
+        commandMap.put("Продать Tether", () -> start(USDT, RUB, SELL));
 
-        commandMap.put("Меню", () -> MenuService.sendMainMenu(chatId));
-        commandMap.put("/start", () -> MenuService.sendMainMenu(chatId));
+        commandMap.put("Меню", () -> menuService.sendMainMenu(chatId));
+        commandMap.put("/start", () -> menuService.sendMainMenu(chatId));
 
         commandMap.put("Сложный обмен", () -> customChange(chatId, msgId));
 
-        commandMap.put("Баланс", () -> MenuService.sendBalance(chatId));
+        commandMap.put("Баланс", () -> menuService.sendBalance(chatId));
     }
 
     private void handleIdleState(String text) {
@@ -85,7 +77,7 @@ public class MessageHandler {
         if (command != null) {
             command.run();
         } else {
-            MenuService.sendMainMenu(chatId);
+            menuService.sendMainMenu(chatId);
         }
     }
 
@@ -112,36 +104,36 @@ public class MessageHandler {
                 }
             }
 
-            UserService.saveOrUpdate(user);
-            UserService.addMessageToDel(chatId, msgId);
-            MenuService.sendApproveMenu(chatId);
+            userService.save(user);
+            userService.addMessageToDel(chatId, msgId);
+            menuService.sendApproveMenu(chatId);
         } else {
             try {
                 double rate = Double.parseDouble(text.replace(",", "."));
                 user.getCurrentDeal().setAmountFrom((double) Math.round(user.getCurrentDeal().getAmountTo() * rate));
                 user.getCurrentDeal().setExchangeRate(rate);
                 user.setStatus(Status.AWAITING_APPROVE);
-                UserService.saveOrUpdate(user);
-                MenuService.sendApproveMenu(chatId);
-                UserService.addMessageToDel(chatId, msgId);
+                userService.save(user);
+                menuService.sendApproveMenu(chatId);
+                userService.addMessageToDel(chatId, msgId);
             } catch (NumberFormatException e) {
-                Message botMsg = MessageUtils.sendText(chatId, "Неверный формат курса.");
-                UserService.addMessageToDel(chatId, botMsg.getMessageId());
+                Message botMsg = messageUtils.sendText(chatId, "Неверный формат курса.");
+                userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
         }
     }
 
     private void handleBuyerName(User user, String text) {
-        UserService.saveBuyerName(chatId, text);
+        userService.saveBuyerName(chatId, text);
         if (user.getCurrentDeal().getIsCustom()) {
-            UserService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
-            UserService.addMessageToDel(chatId, msgId);
-            MenuService.sendSelectCurrency(chatId, "Выберите валюту получения");
+            userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
+            userService.addMessageToDel(chatId, msgId);
+            menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
         } else {
-            UserService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            Message botMsg = MessageUtils.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
-            UserService.addMessageToDel(chatId, botMsg.getMessageId());
-            UserService.addMessageToDel(chatId, msgId);
+            userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
+            Message botMsg = messageUtils.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+            userService.addMessageToDel(chatId, botMsg.getMessageId());
+            userService.addMessageToDel(chatId, msgId);
         }
     }
 
@@ -149,56 +141,46 @@ public class MessageHandler {
         try {
             double amount = Double.parseDouble(text);
 
-//            if (user.getAmountType() == AmountType.GIVE) {
-//                user.getCurrentDeal().setAmountFrom(amount);
-//            } else if (user.getAmountType() == AmountType.RECEIVE) {
-//                user.getCurrentDeal().setAmountTo(amount);
-//            }
-
             if (user.getCurrentDeal().getIsCustom()) {
                 user.setStatus(Status.AWAITING_SELECT_AMOUNT);
-//                msgToEdit = MenuService.sendSelectCurrencyType(chatId);
-//                user.setMessageToEdit(msgToEdit.getMessageId());
-//                UserService.addMessageToDel(chatId, msgToEdit.getMessageId());
-
                 user.getCurrentDeal().setCurrentAmount(amount);
-                UserService.saveOrUpdate(user);
-                Message msg = MenuService.sendSelectAmountType(chatId);
+                userService.save(user);
+                Message msg = menuService.sendSelectAmountType(chatId);
                 user.setMessageToEdit(msg.getMessageId());
-                UserService.save(user);
-                UserService.addMessageToDel(chatId, msg.getMessageId());
+                userService.save(user);
+                userService.addMessageToDel(chatId, msg.getMessageId());
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                 user.getCurrentDeal().setAmountTo(amount);
-                Message message = MessageUtils.sendText(chatId, "Введите курс: ");
-                UserService.saveOrUpdate(user);
-                UserService.addMessageToDel(chatId, message.getMessageId());
+                Message message = messageUtils.sendText(chatId, "Введите курс: ");
+                userService.save(user);
+                userService.addMessageToDel(chatId, message.getMessageId());
             }
 
-            UserService.addMessageToDel(chatId, msgId);
+            userService.addMessageToDel(chatId, msgId);
         } catch (NumberFormatException e) {
-            Message botMsg = MessageUtils.sendText(chatId, "Неверный формат суммы.");
-            UserService.addMessageToDel(chatId, botMsg.getMessageId());
+            Message botMsg = messageUtils.sendText(chatId, "Неверный формат суммы.");
+            userService.addMessageToDel(chatId, botMsg.getMessageId());
         }
     }
 
     private void start(Money from, Money to, DealType dealType) {
-        UserService.startDeal(chatId, from, to, dealType);
-        UserService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
-        UserService.addMessageToDel(chatId, msgId);
-        Message botMsg = MessageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
-        UserService.addMessageToDel(chatId, botMsg.getMessageId());
+        userService.startDeal(chatId, from, to, dealType);
+        userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
+        userService.addMessageToDel(chatId, msgId);
+        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
     private void customChange(Long chatId, Integer msgId) {
-        UserService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
+        userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         Deal deal = new Deal();
         deal.setIsCustom(true);
         deal.setDealType(BUY);
-        UserService.saveUserCurrentDeal(chatId, deal);
-        UserService.addMessageToDel(chatId, msgId);
-        Message botMsg = MessageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
-        UserService.addMessageToDel(chatId, botMsg.getMessageId());
+        userService.saveUserCurrentDeal(chatId, deal);
+        userService.addMessageToDel(chatId, msgId);
+        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
 }
