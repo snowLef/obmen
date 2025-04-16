@@ -2,15 +2,12 @@ package org.example.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
-import org.example.interfaces.MessageProcessor;
-import org.example.interfaces.MessageSender;
 import org.example.model.*;
+import org.example.service.MessageSender;
 import org.example.service.UserService;
 import org.example.state.Status;
-import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.HashMap;
@@ -21,9 +18,9 @@ import static org.example.model.Money.*;
 
 @Component
 @RequiredArgsConstructor
-public class MessageHandler implements MessageProcessor {
+public class MessageHandler {
     private final UserService userService;
-    private final MessageUtils messageUtils;
+    private final MessageSender messageSender;
     private final MenuService menuService;
 
     User user;
@@ -31,7 +28,6 @@ public class MessageHandler implements MessageProcessor {
     private long chatId;
     private Integer msgId;
 
-    @Override
     public void process(Message message) {
         if (message == null || message.getText() == null) return;
 
@@ -120,7 +116,7 @@ public class MessageHandler implements MessageProcessor {
                 menuService.sendApproveMenu(chatId);
                 userService.addMessageToDel(chatId, msgId);
             } catch (NumberFormatException e) {
-                Message botMsg = messageUtils.sendText(chatId, "Неверный формат курса.");
+                Message botMsg = messageSender.sendText(chatId, "Неверный формат курса.");
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
         }
@@ -134,7 +130,7 @@ public class MessageHandler implements MessageProcessor {
             menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
         } else {
             userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            Message botMsg = messageUtils.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+            Message botMsg = messageSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
             userService.addMessageToDel(chatId, botMsg.getMessageId());
             userService.addMessageToDel(chatId, msgId);
         }
@@ -155,14 +151,14 @@ public class MessageHandler implements MessageProcessor {
             } else {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                 user.getCurrentDeal().setAmountTo(amount);
-                Message message = messageUtils.sendText(chatId, "Введите курс: ");
+                Message message = messageSender.sendText(chatId, "Введите курс: ");
                 userService.save(user);
                 userService.addMessageToDel(chatId, message.getMessageId());
             }
 
             userService.addMessageToDel(chatId, msgId);
         } catch (NumberFormatException e) {
-            Message botMsg = messageUtils.sendText(chatId, "Неверный формат суммы.");
+            Message botMsg = messageSender.sendText(chatId, "Неверный формат суммы.");
             userService.addMessageToDel(chatId, botMsg.getMessageId());
         }
     }
@@ -171,7 +167,7 @@ public class MessageHandler implements MessageProcessor {
         userService.startDeal(chatId, from, to, dealType);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = messageSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
 
@@ -182,8 +178,7 @@ public class MessageHandler implements MessageProcessor {
         deal.setDealType(BUY);
         userService.saveUserCurrentDeal(chatId, deal);
         userService.addMessageToDel(chatId, msgId);
-        Message botMsg = messageUtils.sendText(chatId, BotCommands.ASK_FOR_NAME);
+        Message botMsg = messageSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
     }
-
 }

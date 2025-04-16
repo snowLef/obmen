@@ -9,12 +9,14 @@ import org.example.repository.UserRepository;
 import org.example.state.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
-    @Autowired
     private UserRepository userRepository;
 
     public User getUser(Long chatId) {
@@ -76,6 +78,18 @@ public class UserService {
             user.setCurrentDeal(deal);
             userRepository.save(user);
         });
+    }
+
+    public List<Integer> getMessageIdsToDelete(Long chatId) {
+        User user = getUser(chatId);
+        return user.getMessages();
+
+//        messages.forEach(x -> {
+//            DeleteMessage deleteBotMessage = new DeleteMessage();
+//            deleteBotMessage.setChatId(chatId.toString());
+//            deleteBotMessage.setMessageId(x);
+//            del(deleteBotMessage);
+//        });
     }
 
 }

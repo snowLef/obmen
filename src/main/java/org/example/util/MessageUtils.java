@@ -1,51 +1,14 @@
 package org.example.util;
 
 import lombok.RequiredArgsConstructor;
-import org.example.interfaces.MessageSender;
 import org.example.interfaces.TelegramOperations;
-import org.example.model.User;
 import org.example.service.UserService;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
-import org.telegram.telegrambots.meta.api.objects.Message;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
-public class MessageUtils implements MessageSender {
-    private final TelegramOperations telegramService;
+public class MessageUtils {
     private final UserService userService;
-
-    public Message sendText(long chatId, String text) {
-        SendMessage message = SendMessage.builder()
-                .chatId(String.valueOf(chatId))
-                .text(text)
-                .build();
-        return sendMsg(message);
-    }
-
-    public Message sendMsg(SendMessage message) {
-        return telegramService.send(message);
-    }
-
-    private void del(DeleteMessage msg) {
-        telegramService.delete(msg);
-    }
-
-    public void deleteMessages(Long chatId) {
-        User user = userService.getUser(chatId);
-        List<Integer> messages = user.getMessages();
-
-        messages.forEach(x -> {
-            DeleteMessage deleteBotMessage = new DeleteMessage();
-            deleteBotMessage.setChatId(chatId.toString());
-            deleteBotMessage.setMessageId(x);
-            del(deleteBotMessage);
-        });
-    }
 
     public String formatWithSpacesAndDecimals(String input) {
         // 1. Заменим запятую на точку для парсинга
@@ -74,15 +37,43 @@ public class MessageUtils implements MessageSender {
         // 5. Собираем всё обратно
         return spaced.reverse() + fractionalPart;
     }
+//    public Message sendText(long chatId, String text) {
+//        SendMessage message = SendMessage.builder()
+//                .chatId(String.valueOf(chatId))
+//                .text(text)
+//                .build();
+//        return sendMsg(message);
+//    }
+//
+//    public Message sendMsg(SendMessage message) {
+//        return telegramService.send(message);
+//    }
+//
+//    private void del(DeleteMessage msg) {
+//        telegramService.delete(msg);
+//    }
+//
+//    public void deleteMessages(Long chatId) {
+//        User user = userService.getUser(chatId);
+//        List<Integer> messages = user.getMessages();
+//
+//        messages.forEach(x -> {
+//            DeleteMessage deleteBotMessage = new DeleteMessage();
+//            deleteBotMessage.setChatId(chatId.toString());
+//            deleteBotMessage.setMessageId(x);
+//            del(deleteBotMessage);
+//        });
 
-    public void editMsg(Long chatId, Integer messageId, String text) {
-        EditMessageText editMessage = new EditMessageText();
-        editMessage.setChatId(chatId.toString());
-        editMessage.setText(text);
-        editMessage.setMessageId(messageId);
-        editMessage.setReplyMarkup(null);
+//    }
+//    public void editMsg(Long chatId, Integer messageId, String text) {
+//        EditMessageText editMessage = new EditMessageText();
+//        editMessage.setChatId(chatId.toString());
+//        editMessage.setText(text);
+//        editMessage.setMessageId(messageId);
+//        editMessage.setReplyMarkup(null);
+//
+//        telegramService.edit(editMessage);
 
-        telegramService.edit(editMessage);
-    }
+//    }
 
 }

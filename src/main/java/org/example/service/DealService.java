@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DealService {
 
-    @Autowired
     private DealRepository dealRepository;
 
     public Deal save(Deal deal) {

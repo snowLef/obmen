@@ -5,26 +5,25 @@ import org.example.model.Deal;
 import org.example.model.Money;
 import org.example.model.User;
 import org.example.state.Status;
-import org.example.util.MessageUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Message;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class ExchangeProcessor {
 
-    @Autowired
     private UserService userService;
     private CurrencyService currencyService;
-    private MessageUtils messageUtils;
+    private MessageSender messageSender;
 
     public void approve(long chatId) {
         User user = userService.getUser(chatId);
         Deal deal = user.getCurrentDeal();
 
         if (deal == null) {
-            Message botMsg = messageUtils.sendText(chatId, "Сделка не найдена.");
+            Message botMsg = messageSender.sendText(chatId, "Сделка не найдена.");
             userService.addMessageToDel(chatId, botMsg.getMessageId());
             return;
         }
@@ -39,7 +38,7 @@ public class ExchangeProcessor {
 
         if (deal.getDealType().isBuy()) {
             if (fromBalance < amountTo * rate) {
-                Message botMsg = messageUtils.sendText(chatId, "Недостаточно средств: " + from);
+                Message botMsg = messageSender.sendText(chatId, "Недостаточно средств: " + from);
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
                 // Сбросим сделку
                 user.setCurrentDeal(null);
@@ -56,7 +55,7 @@ public class ExchangeProcessor {
 
         } else {
             if (toBalance < amountTo) {
-                Message botMsg = messageUtils.sendText(chatId, "Недостаточно средств: " + to);
+                Message botMsg = messageSender.sendText(chatId, "Недостаточно средств: " + to);
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
                 return;
             }
@@ -69,7 +68,7 @@ public class ExchangeProcessor {
         }
 
         user = userService.getUser(chatId);
-        messageUtils.sendText(chatId, """
+        messageSender.sendText(chatId, """
                 Сделка завершена ✅
                 Имя: %s
                 Сумма получена: %s %s
@@ -82,7 +81,7 @@ public class ExchangeProcessor {
                 Math.round(user.getCurrentDeal().getAmountFrom()), user.getCurrentDeal().getMoneyFrom()));
 
         // Сбросим сделку и удалим сообщения
-        messageUtils.deleteMessages(chatId);
+        deleteMsgs(userService.getMessageIdsToDelete(chatId));
         user.setCurrentDeal(null);
         user.setStatus(Status.IDLE);
         user.setMessages(null);
@@ -91,14 +90,20 @@ public class ExchangeProcessor {
     }
 
     public void cancel(long chatId) {
-        messageUtils.deleteMessages(chatId);
+        deleteMsgs(userService.getMessageIdsToDelete(chatId));
         User user = userService.getUser(chatId);
         user.setCurrentDeal(null);
         user.setStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
         userService.save(user);
-        messageUtils.sendText(chatId, "Сделка отменена.");
+        messageSender.sendText(chatId, "Сделка отменена.");
+    }
+
+    private void deleteMsgs(List<Integer> ids) {
+        ids.forEach(
+                x -> messageSender.delete(x)
+        );
     }
 
 }

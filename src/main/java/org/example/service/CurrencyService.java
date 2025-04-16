@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CurrencyService {
 
-    @Autowired
     private CurrencyRepository currencyRepository;
-
 
     public void updateBalance(Money money, double newBalance) {
         Currency currency = getCurrency(money);

@@ -2,13 +2,13 @@ package org.example.handler;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
-import org.example.interfaces.CallbackProcessor;
+import org.example.interfaces.UpdateProcessor;
 import org.example.model.*;
 import org.example.service.DealService;
+import org.example.service.MessageSender;
 import org.example.service.UserService;
 import org.example.service.ExchangeProcessor;
 import org.example.state.Status;
-import org.example.util.MessageUtils;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
@@ -18,17 +18,15 @@ import static org.example.model.Money.*;
 
 @Component
 @RequiredArgsConstructor
-public class CallbackHandler implements CallbackProcessor {
+public class CallbackHandler {
 
     User user;
-
     private final UserService userService;
-    private final MessageUtils messageUtils;
+    private final MessageSender messageUtils;
     private final ExchangeProcessor exchangeProcessor;
     private final MenuService menuService;
     private final DealService dealService;
 
-    @Override
     public void process(CallbackQuery callbackQuery) {
         long chatId = callbackQuery.getMessage().getChatId();
         String data = callbackQuery.getData();
@@ -119,5 +117,4 @@ public class CallbackHandler implements CallbackProcessor {
             userService.addMessageToDel(chatId, msg.getMessageId());
         }
     }
-
 }
