@@ -2,9 +2,7 @@ package org.example.ui;
 
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
-import org.example.interfaces.BotResponseSender;
-import org.example.model.Money;
-import org.example.model.User;
+import org.example.model.*;
 import org.example.service.CurrencyService;
 import org.example.service.TelegramSender;
 import org.example.service.UserService;
@@ -53,6 +51,36 @@ public class MenuService {
         this.telegramSender = telegramSender;
     }
 
+    public void sendChangeBalanceMenu(long chatId) {
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText("Выберите опцию:");
+
+        ReplyKeyboardMarkup keyboardMarkup = new ReplyKeyboardMarkup();
+        List<KeyboardRow> keyboard = new ArrayList<>();
+
+        // Первый ряд
+        KeyboardRow row1 = new KeyboardRow();
+        row1.add(ChangeBalanceType.GET.getType());
+        row1.add(ChangeBalanceType.GIVE.getType());
+        keyboard.add(row1);
+
+        // Второй ряд
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add(ChangeBalanceType.LEND.getType());
+        row2.add(ChangeBalanceType.DEBT_REPAYMENT.getType());
+        keyboard.add(row2);
+
+        keyboardMarkup.setKeyboard(keyboard);
+        keyboardMarkup.setResizeKeyboard(true); // Опционально: подгоняет размер кнопок
+        keyboardMarkup.setOneTimeKeyboard(true); // Опционально: скрывает клавиатуру после использования
+
+        message.setReplyMarkup(keyboardMarkup);
+
+        Message msg = telegramSender.send(message);
+        userService.addMessageToDel(chatId, msg.getMessageId());
+    }
+
     public void sendMainMenu(long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
@@ -91,6 +119,7 @@ public class MenuService {
 
         // Пятый ряд
         KeyboardRow row5 = new KeyboardRow();
+        row5.add("+/-");
         row5.add("Баланс");
         keyboard.add(row5);
 
@@ -108,21 +137,34 @@ public class MenuService {
         User user = userService.getUser(chatId);
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
-        message.setText("""
-                        Подтвердить?
-                        %s -> %s
-                        Имя: %s
-                        Сумма получения: %s %s
-                        Курс: %s
-                        Сумма выдачи: %s %s
-                        """.formatted(
-                        user.getCurrentDeal().getMoneyFrom(), user.getCurrentDeal().getMoneyTo(),
-                        user.getCurrentDeal().getBuyerName(),
-                        user.getCurrentDeal().getAmountTo(), user.getCurrentDeal().getMoneyTo().getName(),
-                        user.getCurrentDeal().getExchangeRate(),
-                        Math.round(user.getCurrentDeal().getAmountFrom()), user.getCurrentDeal().getMoneyFrom().getName()
-                )
-        );
+
+        if (user.getCurrentDeal().getDealType() == DealType.CHANGE_BALANCE) {
+            message.setText("""
+                            Подтвердить?
+                            Имя: %s
+                            Операция: %s
+                            Сумма: %s %s
+                            """.formatted(
+                            user.getCurrentDeal().getBuyerName(),
+                            user.getChangeBalanceType().getType(),
+                            user.getCurrentDeal().getAmountTo(), user.getCurrentDeal().getMoneyTo().getName()
+                    )
+            );
+        } else {
+            message.setText("""
+                            Подтвердить?
+                            Имя: %s
+                            Сумма получения: %s %s
+                            Курс: %s
+                            Сумма выдачи: %s %s
+                            """.formatted(
+                            user.getCurrentDeal().getBuyerName(),
+                            user.getCurrentDeal().getAmountTo(), user.getCurrentDeal().getMoneyTo().getName(),
+                            user.getCurrentDeal().getExchangeRate(),
+                            Math.round(user.getCurrentDeal().getAmountFrom()), user.getCurrentDeal().getMoneyFrom().getName()
+                    )
+            );
+        }
 
         List<InlineKeyboardButton> row = List.of(
                 createButton("Да", BotCommands.APPROVE_YES),
@@ -138,15 +180,33 @@ public class MenuService {
     }
 
     public void sendBalance(long chatId) {
-        StringBuilder text = new StringBuilder("Баланс:\n");
-        Arrays.stream(Money.values()).forEach(currency -> {
-            double amount = currencyService.getBalance(currency);
-            String formattedAmount = messageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
-            text.append("%s: %s\n".formatted(currency.getName(), formattedAmount));
-        });
+        StringBuilder own = new StringBuilder("Баланс наш:\n");
+        StringBuilder foreign = new StringBuilder("Баланс чужой:\n");
+        StringBuilder debt = new StringBuilder("Долг:\n");
 
-        telegramSender.sendText(chatId, text.toString());
+        for (Money currency : Money.values()) {
+            for (BalanceType type : BalanceType.values()) {
+                double amount = currencyService.getBalance(currency, type);
+                if (amount > 0) {
+                    String formattedAmount = messageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
+                    String line = "%s: %s\n".formatted(currency.getName(), formattedAmount);
+                    switch (type) {
+                        case OWN -> own.append(line);
+                        case FOREIGN -> foreign.append(line);
+                        case DEBT -> debt.append(line);
+                    }
+                }
+            }
+        }
+
+        StringBuilder result = new StringBuilder();
+        if (own.length() > "Баланс наш:\n".length()) result.append(own).append("\n");
+        if (foreign.length() > "Баланс чужой:\n".length()) result.append(foreign).append("\n");
+        if (debt.length() > "Долг:\n".length()) result.append(debt);
+
+        telegramSender.sendText(chatId, result.toString().trim());
     }
+
 
     private InlineKeyboardButton createButton(String text, String callbackData) {
         InlineKeyboardButton button = new InlineKeyboardButton();
@@ -155,8 +215,13 @@ public class MenuService {
         return button;
     }
 
-    public Message sendSelectCurrency(long chatId, String text) {
-        List<Money> currencies = List.of(USDT, USD, EUR, USDW, YE);
+    public void sendSelectCurrency(long chatId, String text) {
+        List<Money> currencies = null;
+        if (userService.getUser(chatId).getCurrentDeal().getDealType() == DealType.CHANGE_BALANCE) {
+            currencies = Arrays.stream(values()).toList();
+        } else {
+            currencies = List.of(USDT, USD, EUR, USDW, YE);
+        }
         List<InlineKeyboardButton> buttons = currencies.stream()
                 .map(x -> createButton(x.getName(), x.getName()))
                 .toList();
@@ -176,7 +241,6 @@ public class MenuService {
         Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
         userService.addMessageToEdit(chatId, msg.getMessageId());
-        return msg;
     }
 
     public Message sendSelectAmountType(long chatId) {

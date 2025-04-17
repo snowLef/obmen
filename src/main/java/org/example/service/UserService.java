@@ -1,5 +1,6 @@
 package org.example.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.model.Deal;
 import org.example.model.DealType;
@@ -50,13 +51,6 @@ public class UserService {
         });
     }
 
-    public void addMessageToDel(Long chatId, Integer msgId) {
-        userRepository.findByChatId(chatId).ifPresent(user -> {
-            user.addMessage(msgId);
-            userRepository.save(user);
-        });
-    }
-
     public void addMessageToEdit(Long chatId, Integer msgId) {
         userRepository.findByChatId(chatId).ifPresent(user -> {
             user.setMessageToEdit(msgId);
@@ -87,13 +81,19 @@ public class UserService {
     public List<Integer> getMessageIdsToDelete(Long chatId) {
         User user = getUser(chatId);
         return user.getMessages();
+    }
 
-//        messages.forEach(x -> {
-//            DeleteMessage deleteBotMessage = new DeleteMessage();
-//            deleteBotMessage.setChatId(chatId.toString());
-//            deleteBotMessage.setMessageId(x);
-//            del(deleteBotMessage);
-//        });
+    @Transactional
+    public void addMessageToDel(Long chatId, Integer msgId) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            user.addMessage(msgId);
+        });
+    }
+
+    public List<Integer> getMessageIdsToDeleteWithInit(Long chatId) {
+        return userRepository.findByChatIdWithMessages(chatId)
+                .map(User::getMessages)
+                .orElse(List.of());
     }
 
 }

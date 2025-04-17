@@ -89,9 +89,14 @@ public class CallbackHandler {
         Deal deal = user.getCurrentDeal();
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
             deal.setMoneyTo(money);
-            userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
+            if (deal.getDealType() == DealType.CHANGE_BALANCE) {
+                userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
+                telegramSender.sendText(chatId, "Введите сумму:");
+            } else {
+                menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
+                userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
+            }
             telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получение: " + deal.getMoneyTo().getName());
-            menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
         } else if (user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
             deal.setMoneyFrom(money);
             telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдача: " + deal.getMoneyFrom().getName());

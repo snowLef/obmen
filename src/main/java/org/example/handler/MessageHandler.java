@@ -57,11 +57,10 @@ public class MessageHandler {
         System.out.println("[" + chatId + "] Статус: " + status + ", Текст: " + text);
 
         switch (status) {
-            case IDLE -> handleIdleState(text);
+            case IDLE, AWAITING_CHANGE_BALANCE_TYPE -> handleIdleState(text);
             case AWAITING_BUYER_NAME -> handleBuyerName(user, text);
             case AWAITING_DEAL_AMOUNT -> handleDealAmount(text);
             case AWAITING_EXCHANGE_RATE -> handleExchangeRate(user, text);
-
             default -> {
             }
         }
@@ -82,7 +81,33 @@ public class MessageHandler {
 
         commandMap.put("Сложный обмен", () -> customChange(chatId, msgId));
 
+        commandMap.put("+/-", () -> handlePlusMinus(chatId, msgId));
+
+        commandMap.put("Принимаем +", () -> handleChangeBalance(chatId, ChangeBalanceType.GET));
+        commandMap.put("Отдаем +", () -> handleChangeBalance(chatId, ChangeBalanceType.GIVE));
+        commandMap.put("Даем в долг", () -> handleChangeBalance(chatId, ChangeBalanceType.LEND));
+        commandMap.put("Возврат долга", () -> handleChangeBalance(chatId, ChangeBalanceType.DEBT_REPAYMENT));
+
         commandMap.put("Баланс", () -> menuService.sendBalance(chatId));
+    }
+
+    private void handleChangeBalance(long chatId, ChangeBalanceType changeBalanceType) {
+        switch (changeBalanceType) {
+            case GET -> user.setChangeBalanceType(ChangeBalanceType.GET);
+            case GIVE -> user.setChangeBalanceType(ChangeBalanceType.GIVE);
+            case LEND -> user.setChangeBalanceType(ChangeBalanceType.LEND);
+            case DEBT_REPAYMENT -> user.setChangeBalanceType(ChangeBalanceType.DEBT_REPAYMENT);
+        }
+        user.setStatus(Status.AWAITING_FIRST_CURRENCY);
+        userService.save(user);
+        menuService.sendSelectCurrency(chatId, "Выберите валюту:");
+    }
+
+    private void handlePlusMinus(long chatId, Integer msgId) {
+        userService.addMessageToDel(chatId, msgId);
+        userService.startDeal(chatId, null, null, CHANGE_BALANCE);
+        userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
+        telegramSender.sendText(chatId, "Введите имя:");
     }
 
     private void handleIdleState(String text) {
@@ -95,7 +120,7 @@ public class MessageHandler {
     }
 
     private void handleExchangeRate(User user, String text) {
-        if (user.getCurrentDeal().getIsCustom()) {
+        if (user.getCurrentDeal().getDealType() == CUSTOM) {
             double rate = Double.parseDouble(text.replace(",", "."));
             user.getCurrentDeal().setExchangeRate(rate);
             user.setStatus(Status.AWAITING_APPROVE);
@@ -142,20 +167,28 @@ public class MessageHandler {
 
     private void handleBuyerName(User user, String text) {
         userService.saveBuyerName(chatId, text);
-        if (user.getCurrentDeal().getIsCustom()) {
-            userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
-            userService.addMessageToDel(chatId, msgId);
-            menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
-        } else {
-            userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-            if (user.getCurrentDeal().getDealType() == SELL) {
-                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().getName()));
-                userService.addMessageToDel(chatId, botMsg.getMessageId());
-            } else if (user.getCurrentDeal().getDealType() == BUY) {
-                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
-                userService.addMessageToDel(chatId, botMsg.getMessageId());
+        userService.addMessageToDel(chatId, msgId);
+
+        if (user.getCurrentDeal().getDealType() == BUY || user.getCurrentDeal().getDealType() == SELL || user.getCurrentDeal().getDealType() == CUSTOM) {
+            if (user.getCurrentDeal().getDealType() == CUSTOM) {
+                userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
+               // userService.addMessageToDel(chatId, msgId);
+                menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
+            } else {
+                userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
+                if (user.getCurrentDeal().getDealType() == SELL) {
+                    Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().getName()));
+                   // userService.addMessageToDel(chatId, botMsg.getMessageId());
+                } else if (user.getCurrentDeal().getDealType() == BUY) {
+                    Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+                   // userService.addMessageToDel(chatId, botMsg.getMessageId());
+                }
+                //userService.addMessageToDel(chatId, msgId);
             }
-            userService.addMessageToDel(chatId, msgId);
+        } else if (user.getCurrentDeal().getDealType() == CHANGE_BALANCE) {
+            //userService.addMessageToDel(chatId, msgId);
+            userService.saveUserStatus(chatId, Status.AWAITING_CHANGE_BALANCE_TYPE);
+            menuService.sendChangeBalanceMenu(chatId);
         }
     }
 
@@ -163,7 +196,7 @@ public class MessageHandler {
         try {
             double amount = Double.parseDouble(text);
 
-            if (user.getCurrentDeal().getIsCustom()) {
+            if (user.getCurrentDeal().getDealType() == CUSTOM) {
                 user.setStatus(Status.AWAITING_SELECT_AMOUNT);
                 user.getCurrentDeal().setCurrentAmount(amount);
                 userService.save(user);
@@ -171,7 +204,7 @@ public class MessageHandler {
                 user.setMessageToEdit(msg.getMessageId());
                 userService.save(user);
                 userService.addMessageToDel(chatId, msg.getMessageId());
-            } else {
+            } else if (user.getCurrentDeal().getDealType() == SELL || user.getCurrentDeal().getDealType() == BUY) {
                 user.setStatus(Status.AWAITING_EXCHANGE_RATE);
 
                 if (user.getCurrentDeal().getDealType() == SELL) {
@@ -183,6 +216,11 @@ public class MessageHandler {
                 userService.save(user);
                 Message message = telegramSender.sendText(chatId, "Введите курс: ");
                 userService.addMessageToDel(chatId, message.getMessageId());
+            } else if (user.getCurrentDeal().getDealType() == CHANGE_BALANCE) {
+                user.getCurrentDeal().setAmountTo(amount);
+                user.setStatus(Status.AWAITING_APPROVE);
+                userService.save(user);
+                menuService.sendApproveMenu(chatId);
             }
 
             userService.addMessageToDel(chatId, msgId);
@@ -203,8 +241,7 @@ public class MessageHandler {
     private void customChange(Long chatId, Integer msgId) {
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         Deal deal = new Deal();
-        deal.setIsCustom(true);
-        deal.setDealType(BUY);
+        deal.setDealType(CUSTOM);
         userService.saveUserCurrentDeal(chatId, deal);
         userService.addMessageToDel(chatId, msgId);
         Message botMsg = telegramSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
