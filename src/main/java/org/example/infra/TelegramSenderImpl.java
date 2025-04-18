@@ -1,7 +1,7 @@
-package org.example.service;
+package org.example.infra;
 
 import lombok.extern.slf4j.Slf4j;
-import org.example.ObmenBot;
+import org.example.bot.ObmenBot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;

@@ -1,4 +1,4 @@
-package org.example.state;
+package org.example.model.enums;
 
 public enum Status {
     IDLE,
@@ -11,5 +11,8 @@ public enum Status {
     AWAITING_EXCHANGE_RATE_TYPE,
     AWAITING_CUSTOM_APPROVE,
     AWAITING_EXCHANGE_RATE,
-    AWAITING_APPROVE
+    AWAITING_APPROVE,
+
+
+    AWAITING_CURRENCY_TYPE
 }

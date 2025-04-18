@@ -1,9 +1,8 @@
 package org.example.service;
 
-import lombok.RequiredArgsConstructor;
-import org.example.model.BalanceType;
+import org.example.model.enums.BalanceType;
 import org.example.model.Currency;
-import org.example.model.Money;
+import org.example.model.enums.Money;
 import org.example.repository.CurrencyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

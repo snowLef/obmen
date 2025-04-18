@@ -1,8 +1,13 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.infra.TelegramSender;
 import org.example.model.*;
-import org.example.state.Status;
+import org.example.model.enums.BalanceType;
+import org.example.model.enums.ChangeBalanceType;
+import org.example.model.enums.Money;
+import org.example.model.enums.Status;
+import org.example.ui.MenuService;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -15,6 +20,7 @@ public class ExchangeProcessor {
     private final UserService userService;
     private final CurrencyService currencyService;
     private final TelegramSender telegramSender;
+    private final MenuService menuService;
 
     public void approve(long chatId) {
         User user = userService.getUser(chatId);
@@ -31,8 +37,8 @@ public class ExchangeProcessor {
             case SELL -> processSell(chatId, user, deal);
             case CHANGE_BALANCE -> processChangeBalance(chatId, user, deal);
         }
-    }
 
+    }
 
     public void cancel(long chatId) {
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
@@ -48,6 +54,7 @@ public class ExchangeProcessor {
     }
 
     private void resetUserState(User user) {
+
         user.setCurrentDeal(null);
         user.setStatus(Status.IDLE);
         user.setMessages(null);
@@ -55,31 +62,6 @@ public class ExchangeProcessor {
         userService.save(user);
     }
 
-    private void sendBalanceChangedMessage(long chatId, Deal deal, String changeType) {
-        telegramSender.sendText(chatId, """
-                Баланс изменен ✅
-                Имя: %s
-                %s
-                Сумма: %s %s
-                """.formatted(
-                deal.getBuyerName(),
-                changeType,
-                deal.getAmountTo(), deal.getMoneyTo()));
-    }
-
-    private void sendDealCompletedMessage(long chatId, Deal deal) {
-        telegramSender.sendText(chatId, """
-                Сделка завершена ✅
-                Имя: %s
-                Сумма получена: %s %s
-                Курс: %s
-                Сумма выдана: %s %s
-                """.formatted(
-                deal.getBuyerName(),
-                Math.round(deal.getAmountTo()), deal.getMoneyTo(),
-                deal.getExchangeRate(),
-                Math.round(deal.getAmountFrom()), deal.getMoneyFrom()));
-    }
 
     private double getOwnBalance(Money currency) {
         return currencyService.getBalance(currency, BalanceType.OWN);
@@ -96,6 +78,8 @@ public class ExchangeProcessor {
     private void sendInsufficientFundsMessage(long chatId, Money currency) {
         Message botMsg = telegramSender.sendText(chatId, "Недостаточно средств: " + currency);
         userService.addMessageToDel(chatId, botMsg.getMessageId());
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        resetUserState(userService.getUser(chatId));
     }
 
     private void processBuy(long chatId, User user, Deal deal) {
@@ -111,7 +95,9 @@ public class ExchangeProcessor {
 
         updateOwnBalance(deal.getMoneyFrom(), fromBalance - required);
         updateOwnBalance(deal.getMoneyTo(), toBalance + deal.getAmountTo());
-        sendDealCompletedMessage(chatId, deal);
+        menuService.sendDealCompletedMessage(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        resetUserState(user);
     }
 
     private void processSell(long chatId, User user, Deal deal) {
@@ -125,7 +111,9 @@ public class ExchangeProcessor {
         double toBalance = getOwnBalance(deal.getMoneyTo());
         updateOwnBalance(deal.getMoneyFrom(), fromBalance - deal.getAmountFrom());
         updateOwnBalance(deal.getMoneyTo(), toBalance + deal.getAmountTo());
-        sendDealCompletedMessage(chatId, deal);
+        menuService.sendDealCompletedMessage(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        resetUserState(user);
     }
 
     private void processChangeBalance(long chatId, User user, Deal deal) {
@@ -143,7 +131,8 @@ public class ExchangeProcessor {
                     currencyService.moveBalance(deal.getMoneyTo(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
         }
 
-        sendBalanceChangedMessage(chatId, deal, user.getChangeBalanceType().getType());
+        menuService.sendBalanceChangedMessage(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         resetUserState(user);
     }
 }

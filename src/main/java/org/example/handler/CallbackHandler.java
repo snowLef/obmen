@@ -2,18 +2,22 @@ package org.example.handler;
 
 import org.example.constants.BotCommands;
 import org.example.model.*;
+import org.example.model.enums.AmountType;
+import org.example.model.enums.CurrencyType;
+import org.example.model.enums.DealType;
+import org.example.model.enums.Money;
 import org.example.service.DealService;
-import org.example.service.TelegramSender;
+import org.example.infra.TelegramSender;
 import org.example.service.UserService;
 import org.example.service.ExchangeProcessor;
-import org.example.state.Status;
+import org.example.model.enums.Status;
 import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-import static org.example.model.Money.*;
+import static org.example.model.enums.Money.*;
 
 @Component
 public class CallbackHandler {

@@ -5,7 +5,10 @@ import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.example.state.Status;
+import org.example.model.enums.AmountType;
+import org.example.model.enums.ChangeBalanceType;
+import org.example.model.enums.CurrencyType;
+import org.example.model.enums.Status;
 
 import java.util.ArrayList;
 import java.util.List;

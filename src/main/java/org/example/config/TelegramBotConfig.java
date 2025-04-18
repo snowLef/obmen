@@ -1,5 +1,6 @@
-package org.example;
+package org.example.config;
 
+import org.example.bot.ObmenBot;
 import org.example.interfaces.TelegramClient;
 import org.example.service.UpdateRouter;
 import org.springframework.context.annotation.Bean;

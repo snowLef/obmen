@@ -1,16 +1,14 @@
 package org.example.service;
 
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
 import org.example.model.Deal;
-import org.example.model.DealType;
-import org.example.model.Money;
+import org.example.model.enums.DealType;
+import org.example.model.enums.Money;
 import org.example.model.User;
 import org.example.repository.UserRepository;
-import org.example.state.Status;
+import org.example.model.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 
 import java.util.List;
 
@@ -76,11 +74,6 @@ public class UserService {
             user.setCurrentDeal(deal);
             userRepository.save(user);
         });
-    }
-
-    public List<Integer> getMessageIdsToDelete(Long chatId) {
-        User user = getUser(chatId);
-        return user.getMessages();
     }
 
     @Transactional

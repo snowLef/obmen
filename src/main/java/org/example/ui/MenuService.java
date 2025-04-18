@@ -3,8 +3,12 @@ package org.example.ui;
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
+import org.example.model.enums.BalanceType;
+import org.example.model.enums.ChangeBalanceType;
+import org.example.model.enums.DealType;
+import org.example.model.enums.Money;
 import org.example.service.CurrencyService;
-import org.example.service.TelegramSender;
+import org.example.infra.TelegramSender;
 import org.example.service.UserService;
 import org.example.util.MessageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.example.model.Money.*;
+import static org.example.model.enums.Money.*;
 
 @Service
 @RequiredArgsConstructor
@@ -298,6 +302,40 @@ public class MenuService {
         message.setReplyMarkup(markup);
 
         return telegramSender.send(message);
+    }
+
+    public void sendBalanceChangedMessage(long chatId) {
+        User user = userService.getUser(chatId);
+        Deal deal = user.getCurrentDeal();
+        String changeType = user.getChangeBalanceType().getType();
+        telegramSender.sendText(chatId, """
+                Баланс изменен ✅
+                Имя: %s
+                %s
+                Сумма: %s %s
+                """.formatted(
+                deal.getBuyerName(),
+                changeType,
+                deal.getAmountTo(), deal.getMoneyTo()));
+    }
+
+    public void sendDealCompletedMessage(long chatId) {
+        Deal deal = userService.getUser(chatId).getCurrentDeal();
+        telegramSender.sendText(chatId, """
+                Сделка завершена ✅
+                Имя: %s
+                Сумма получена: %s %s
+                Курс: %s
+                Сумма выдана: %s %s
+                """.formatted(
+                deal.getBuyerName(),
+                Math.round(deal.getAmountTo()), deal.getMoneyTo(),
+                deal.getExchangeRate(),
+                Math.round(deal.getAmountFrom()), deal.getMoneyFrom()));
+    }
+
+    public Message sendEnterExchangeRate(long chatId) {
+        return telegramSender.sendText(chatId, "Введите курс:");
     }
 
 }
