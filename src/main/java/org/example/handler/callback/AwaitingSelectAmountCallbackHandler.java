@@ -9,7 +9,6 @@ import org.example.service.UserService;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Message;
 
 @Component
 @RequiredArgsConstructor
@@ -26,18 +25,27 @@ public class AwaitingSelectAmountCallbackHandler implements CallbackCommandHandl
 
         if ("give".equals(data)) {
             user.setAmountType(AmountType.GIVE);
-            user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
+//            user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
+            user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
             user.getCurrentDeal().getMoneyFrom().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
             userService.save(user);
-            Message message = menuService.sendSelectCurrencyType(chatId);
-            userService.addMessageToDel(chatId, message.getMessageId());
+            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
+//            menuService.sendSelectCurrencyType(chatId);
         } else if ("receive".equals(data)) {
             user.setAmountType(AmountType.RECEIVE);
-            user.setStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
+//            user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
+            user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
             user.getCurrentDeal().getMoneyTo().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
             userService.save(user);
-            Message message = menuService.sendSelectCurrencyType(chatId);
-            userService.addMessageToDel(chatId, message.getMessageId());
+
+            if (user.getAmountType() == AmountType.GIVE) {
+                telegramSender.editMsg(chatId, user.getMessageToEdit(),
+                        user.getCurrentDeal().getCurrentAmount() + " " + user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName() + " отдать");            } else if (user.getAmountType() == AmountType.RECEIVE) {
+                telegramSender.editMsg(chatId, user.getMessageToEdit(),
+                        user.getCurrentDeal().getCurrentAmount() + " " + user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName() + " забрать");
+            }
+            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
+//            menuService.sendSelectCurrencyType(chatId);
         } else {
             menuService.sendSelectAmountType(chatId); // повторно покажем кнопки
         }

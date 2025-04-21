@@ -44,7 +44,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
 
         // Парсим введённую сумму
         try {
-            double amount = Double.parseDouble(text);
+            int amount = Math.round(Float.parseFloat(text));
 
             // Обновляем сумму по текущей валюте
             deal.getMoneyTo().stream()
@@ -58,16 +58,13 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                 user.setCurrentCurrencyIndex(index);
                 userService.save(user);
 
-                Message message1 = telegramSender.sendText(chatId, "[Получение] Введите сумму для %s:".formatted(currencies.get(index).getName()));
-                userService.addMessageToDel(chatId, message1.getMessageId());
+                telegramSender.sendText(chatId, "[Получение] Введите сумму для %s:".formatted(currencies.get(index).getName()));
             } else {
-                user.setStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
+                user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
                 user.setCurrentCurrencyIndex(0);
                 userService.save(user);
                 String nextCurrency = user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName();
-                Message message1 = telegramSender.sendText(chatId, "[Выдача] Введите сумму для %s:".formatted(nextCurrency));
-                userService.addMessageToDel(chatId, message1.getMessageId());
-
+                telegramSender.sendText(chatId, "[Выдача] Введите сумму для %s:".formatted(nextCurrency));
             }
 
             dealService.save(deal);
@@ -83,7 +80,4 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
         return Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO;
     }
 
-    private void askNextCurrency(Long chatId, Money currency) {
-        telegramSender.sendText(chatId, "Введите сумму для " + currency.getName() + ":");
-    }
 }

@@ -26,7 +26,7 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
         String text = message.getText();
 
         try {
-            double amount = Double.parseDouble(text);
+            long amount = Math.round(Long.parseLong(text));
 
             DealType dealType = user.getCurrentDeal().getDealType();
             Deal deal = user.getCurrentDeal();
@@ -34,28 +34,32 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
             switch (dealType) {
                 case BUY -> {
                     deal.getMoneyTo().get(0).setAmount(amount);
-                    user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+                    user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
                     userService.save(user);
                     sendEnterRateMessage(chatId);
                 }
                 case SELL -> {
                     deal.getMoneyFrom().get(0).setAmount(amount);
-                    user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+                    user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
                     userService.save(user);
                     sendEnterRateMessage(chatId);
                 }
                 case CUSTOM -> {
                     deal.setCurrentAmount(amount);
-                    user.setStatus(Status.AWAITING_SELECT_AMOUNT);
+                    user.pushStatus(Status.AWAITING_SELECT_AMOUNT);
                     userService.save(user);
-                    Message msg = menuService.sendSelectAmountType(chatId);
-                    user.setMessageToEdit(msg.getMessageId());
-                    userService.save(user);
-                    userService.addMessageToDel(chatId, msg.getMessageId());
+                    menuService.sendSelectAmountType(chatId);
                 }
                 case CHANGE_BALANCE -> {
                     deal.getMoneyTo().get(0).setAmount(amount);
-                    user.setStatus(Status.AWAITING_APPROVE);
+                    user.pushStatus(Status.AWAITING_APPROVE);
+                    userService.save(user);
+                    menuService.sendApproveMenu(chatId);
+                }
+                case MOVING_BALANCE -> {
+                    deal.getMoneyFrom().get(0).setAmount(amount);
+                    deal.getMoneyTo().get(0).setAmount(amount);
+                    user.pushStatus(Status.AWAITING_APPROVE);
                     userService.save(user);
                     menuService.sendApproveMenu(chatId);
                 }
@@ -70,8 +74,7 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
     }
 
     private void sendEnterRateMessage(long chatId) {
-        Message message = telegramSender.sendText(chatId, "Введите курс: ");
-        userService.addMessageToDel(chatId, message.getMessageId());
+        telegramSender.sendTextWithKeyboard(chatId, "Введите курс: ");
     }
 
     @Override

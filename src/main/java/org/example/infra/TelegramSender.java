@@ -7,10 +7,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 
 public interface TelegramSender {
     Message send(SendMessage message);
-    void send(EditMessageText message);
     Message sendText(Long chatId, String text);
     void editMsg(Long chatId, Integer messageToEdit, String s);
     void deleteMessage(Long chatId, Integer messageToDelete);
-    public Message sendInlineKeyboard(Long chatId, String text, InlineKeyboardMarkup markup);
-    public void editMsgWithKeyboard(Long chatId, Integer messageToEdit, String s);
+    Message sendInlineKeyboard(Long chatId, String text, InlineKeyboardMarkup markup);
+    void editMsgWithKeyboard(Long chatId, Integer messageToEdit, String s);
+
+    void sendTextWithKeyboard(Long chatId, String text);
 }

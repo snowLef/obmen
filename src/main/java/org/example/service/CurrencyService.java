@@ -18,7 +18,7 @@ public class CurrencyService {
     }
 
     // Обновить баланс для определенного типа баланса (свой, чужой, долг и т.д.)
-    public void updateBalance(Money money, BalanceType type, double newBalance) {
+    public void updateBalance(Money money, BalanceType type, long newBalance) {
         Currency currency = getCurrency(money);
         if (currency != null) {
             currency.updateBalance(type, newBalance);
@@ -27,13 +27,13 @@ public class CurrencyService {
     }
 
     // Получить баланс для определенного типа баланса
-    public double getBalance(Money money, BalanceType type) {
+    public long getBalance(Money money, BalanceType type) {
         Currency currency = getCurrency(money);
-        return currency != null ? currency.getBalance(type) : 0.0;
+        return currency != null ? currency.getBalance(type) : 0L;
     }
 
     // Переместить средства между типами балансов (например, с "своего" на "долг")
-    public void moveBalance(Money money, BalanceType from, BalanceType to, double amount) {
+    public void moveBalance(Money money, BalanceType from, BalanceType to, long amount) {
         Currency currency = getCurrency(money);
         if (currency != null) {
             currency.move(from, to, amount);

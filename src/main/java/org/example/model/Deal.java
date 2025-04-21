@@ -33,7 +33,7 @@ public class Deal {
 
     private Double exchangeRate;
 
-    private Double currentAmount;
+    private long currentAmount;
 
     @Enumerated(EnumType.STRING)
     private DealType dealType;
@@ -53,7 +53,7 @@ public class Deal {
 
     public void addMoneyFrom(Money money) {
         if (moneyFrom.stream().noneMatch(ca -> ca.getCurrency() == money)) {
-            moneyFrom.add(new CurrencyAmount(money, null));
+            moneyFrom.add(new CurrencyAmount(money, 0L));
         }
     }
 
@@ -63,7 +63,7 @@ public class Deal {
 
     public void addMoneyTo(Money money) {
         if (moneyTo.stream().noneMatch(ca -> ca.getCurrency() == money)) {
-            moneyTo.add(new CurrencyAmount(money, null));
+            moneyTo.add(new CurrencyAmount(money, 0L));
         }
     }
 
@@ -71,19 +71,19 @@ public class Deal {
         moneyTo.removeIf(ca -> ca.getCurrency() == money);
     }
 
-    public Double getAmountFrom() {
+    public long getAmountFrom() {
         return moneyFrom.get(0).getAmount();
     }
 
-    public Double getAmountTo() {
+    public long getAmountTo() {
         return moneyTo.get(0).getAmount();
     }
 
-    public void setAmountFrom(Double amount) {
+    public void setAmountFrom(long amount) {
         moneyFrom.get(0).setAmount(amount);
     }
 
-    public void setAmountTo(Double amount) {
+    public void setAmountTo(long amount) {
         moneyTo.get(0).setAmount(amount);
     }
 

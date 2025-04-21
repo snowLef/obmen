@@ -19,5 +19,5 @@ public class CurrencyAmount {
     @Enumerated(EnumType.STRING)
     private Money currency;
 
-    private Double amount;
+    private long amount;
 }

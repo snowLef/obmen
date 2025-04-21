@@ -10,6 +10,8 @@ public enum DealType {
     SELL ("Продажа"),
     CUSTOM ("Сложный обмен"),
     CHANGE_BALANCE ("Изменение баланса"),
+    MOVING_BALANCE ("Перемещение"),
+    //CHANGE_BALANCE ("Изменение"),
     TRANSPOSITION ("Перестановка"),
     INVOICE ("Invoice");
 

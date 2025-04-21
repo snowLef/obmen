@@ -23,7 +23,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.example.model.enums.Money.*;
 
@@ -56,26 +55,53 @@ public class MenuService {
         this.telegramSender = telegramSender;
     }
 
-    public String formatSelectedCurrencies(List<Money> currencies) {
-        return currencies.stream()
-                .map(Money::getName)
-                .collect(Collectors.joining(" + "));
+    public void sendSelectBalance(long chatId, String text) {
+        List<BalanceType> balances = List.of(BalanceType.OWN, BalanceType.FOREIGN);
+
+        List<InlineKeyboardButton> buttons = balances.stream()
+                .map(x -> createButton(x.getDisplayName(), x.name()))
+                .toList();
+
+        SendMessage message = new SendMessage();
+        message.setChatId(String.valueOf(chatId));
+        message.setText(text);
+
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+
+        keyboard.add(buttons);
+
+        InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
+        markup.setKeyboard(keyboard);
+        message.setReplyMarkup(addBackCancelButtons(markup));
+
+        Message msg = telegramSender.send(message);
+        userService.addMessageToDel(chatId, msg.getMessageId());
+        userService.addMessageToEdit(chatId, msg.getMessageId());
     }
 
-    public String getEnterAmountMessage(Money currency) {
-        return "[Получение] Введите сумму для " + currency.getName() + ":";
+    public InlineKeyboardMarkup addBackCancelButtons(InlineKeyboardMarkup originalMarkup) {
+        List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+
+        // Если клавиатура существовала — копируем её
+        if (originalMarkup != null) {
+            originalMarkup.getKeyboard();
+            keyboard.addAll(originalMarkup.getKeyboard());
+        }
+
+        // Добавляем кнопки "Назад" и "Отмена"
+        keyboard.add(List.of(
+                InlineKeyboardButton.builder().text("◀️ Назад").callbackData("back").build(),
+                InlineKeyboardButton.builder().text("❌ Отмена").callbackData("cancel").build()
+        ));
+
+        return InlineKeyboardMarkup.builder().keyboard(keyboard).build();
     }
 
-    public String getSelectedCurrenciesMessage(String prefix, List<Money> currencies) {
-        return "[" + prefix + "] Выбрано: " + formatSelectedCurrencies(currencies);
-    }
-
-    public Message sendSelectMultiplyCurrency(Long chatId, String text) {
+    public void sendSelectMultiplyCurrency(Long chatId, String text) {
         InlineKeyboardMarkup markup = createCurrencyKeyboard();
-        Message msg = telegramSender.sendInlineKeyboard(chatId, text, markup);
+        Message msg = telegramSender.sendInlineKeyboard(chatId, text, addBackCancelButtons(markup));
         userService.addMessageToDel(chatId, msg.getMessageId()); // мб не нужен
         userService.addMessageToEdit(chatId, msg.getMessageId());
-        return msg;
     }
 
     public InlineKeyboardMarkup createCurrencyKeyboard() {
@@ -138,26 +164,26 @@ public class MenuService {
 
         // Первый ряд
         KeyboardRow row1 = new KeyboardRow();
-        row1.add("Купить Доллар");
-        row1.add("Продать Доллар");
+        row1.add("Купить USD");
+        row1.add("Продать USD");
         keyboard.add(row1);
 
         // Второй ряд
         KeyboardRow row2 = new KeyboardRow();
-        row2.add("Купить Евро");
-        row2.add("Продать Евро");
+        row2.add("Купить EUR");
+        row2.add("Продать EUR");
         keyboard.add(row2);
 
         // Третий ряд
         KeyboardRow row3 = new KeyboardRow();
-        row3.add("Купить Белый Доллар");
-        row3.add("Продать Белый Доллар");
+        row3.add("Купить USD (Б)");
+        row3.add("Продать USD (Б)");
         keyboard.add(row3);
 
         // Четвертый ряд
         KeyboardRow row4 = new KeyboardRow();
-        row4.add("Купить Tether");
-        row4.add("Продать Tether");
+        row4.add("Купить USDT");
+        row4.add("Продать USDT");
         keyboard.add(row4);
 
         KeyboardRow customRow = new KeyboardRow();
@@ -169,6 +195,8 @@ public class MenuService {
         // Пятый ряд
         KeyboardRow row5 = new KeyboardRow();
         row5.add("+/-");
+        row5.add("Перемещение");
+        row5.add("Изменение");
         row5.add("Баланс");
         keyboard.add(row5);
 
@@ -184,76 +212,130 @@ public class MenuService {
 
     public void sendApproveMenu(long chatId) {
         User user = userService.getUser(chatId);
+        Deal deal = user.getCurrentDeal();
         SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
+        message.setChatId(chatId);
+        message.setParseMode("MarkdownV2");
 
-        if (user.getCurrentDeal().getDealType() == DealType.CHANGE_BALANCE) {
+        if (deal.getDealType() == DealType.CHANGE_BALANCE) {
             message.setText("""
                             Подтвердить?
                             Имя: %s
                             Операция: %s
                             Сумма: %s %s
                             """.formatted(
-                            user.getCurrentDeal().getBuyerName(),
+                            deal.getBuyerName(),
                             user.getChangeBalanceType().getType(),
-                            user.getCurrentDeal().getMoneyTo().get(0).getAmount(), user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName()
+                            deal.getMoneyTo().get(0).getAmount(), deal.getMoneyTo().get(0).getCurrency().getName()
+                    )
+            );
+        } else if (deal.getDealType() == DealType.CUSTOM) {
+            message.setText(messageUtils.escapeMarkdown("""
+                                    Подтвердить?
+                                    *%s*
+                                    Имя: %s
+                                    Получено: *%s %s*
+                                    Курс: %s
+                                    Выдано: *%s %s*
+                                    """.formatted(
+                                    deal.getDealType().getType(),
+                                    deal.getBuyerName(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                                    deal.getExchangeRate(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
+                            )
                     )
             );
         } else {
-            message.setText("""
-                            Подтвердить?
-                            Имя: %s
-                            Сумма получения: %s %s
-                            Курс: %s
-                            Сумма выдачи: %s %s
-                            """.formatted(
-                            user.getCurrentDeal().getBuyerName(),
-                            user.getCurrentDeal().getMoneyTo().get(0).getAmount(), user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName(),
-                            user.getCurrentDeal().getExchangeRate(),
-                            Math.round(user.getCurrentDeal().getMoneyFrom().get(0).getAmount()), user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName()
+            message.setText(messageUtils.escapeMarkdown("""
+                                    Подтвердить?
+                                    *%s %s*
+                                    Имя: %s
+                                    Получено: *%s %s*
+                                    Курс: %s
+                                    Выдано: *%s %s*
+                                    """.formatted(
+                                    deal.getDealType().getType(), deal.getMoneyTo().get(0).getCurrency().getNameForBalance(),
+                                    deal.getBuyerName(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                                    deal.getExchangeRate(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
+                            )
                     )
             );
         }
 
         List<InlineKeyboardButton> row = List.of(
-                createButton("Да", BotCommands.APPROVE_YES),
-                createButton("Нет", BotCommands.APPROVE_NO)
+                createButton("Да ✅", BotCommands.APPROVE_YES)
+//                ,
+//                createButton("Нет", BotCommands.APPROVE_NO)
         );
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(List.of(row));
-        message.setReplyMarkup(markup);
+        message.setReplyMarkup(addBackCancelButtons(markup));
 
-        Message msg = telegramSender.send(message);
-        userService.addMessageToDel(chatId, msg.getMessageId());
+        Message message1 = telegramSender.send(message);
+        userService.addMessageToDel(chatId, message1.getMessageId());
     }
 
     public void sendBalance(long chatId) {
-        StringBuilder own = new StringBuilder("Баланс наш:\n");
-        StringBuilder foreign = new StringBuilder("Баланс чужой:\n");
-        StringBuilder debt = new StringBuilder("Долг:\n");
+//        StringBuilder own = new StringBuilder("\"> __**НАШ БАЛАНС:**__\\n\"");
+//        StringBuilder foreign = new StringBuilder("\\n> __**ЧУЖОЙ БАЛАНС:**__\\n");
+//        StringBuilder debt = new StringBuilder("\\n> __**ДОЛГ:**__\\n");
+//
+//        for (Money currency : Money.values()) {
+//            for (BalanceType type : BalanceType.values()) {
+//                long amount = currencyService.getBalance(currency, type);
+//                if (amount > 0) {
+//                    String formattedAmount = messageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
+//                    String line = "%s: %s\n".formatted(currency.getNameForBalance(), formattedAmount);
+//                    switch (type) {
+//                        case OWN -> own.append(line);
+//                        case FOREIGN -> foreign.append(line);
+//                        case DEBT -> debt.append(line);
+//                    }
+//                }
+//            }
+//        }
+//
+//        StringBuilder result = new StringBuilder();
+//        if (own.length() > "Баланс наш:\n".length()) result.append(own).append("\n");
+//        if (foreign.length() > "Баланс чужой:\n".length()) result.append(foreign).append("\n");
+//        if (debt.length() > "Долг:\n".length()) result.append(debt);
 
+        messageUtils.sendFormattedText(chatId, formatBalances());
+    }
+
+    private String formatBalances() {
+        StringBuilder message = new StringBuilder();
+
+        // Заголовки (жирный, подчёркнутый, верхний регистр)
+        message.append("> __*НАШ БАЛАНС:*__\n");
+        appendCurrencyLines(message, BalanceType.OWN);
+
+        message.append("\n> __*ЧУЖОЙ БАЛАНС:*__\n");
+        appendCurrencyLines(message, BalanceType.FOREIGN);
+
+        message.append("\n> __*ДОЛГ:*__\n");
+        appendCurrencyLines(message, BalanceType.DEBT);
+
+        return message.toString();
+    }
+
+    private void appendCurrencyLines(StringBuilder builder, BalanceType type) {
         for (Money currency : Money.values()) {
-            for (BalanceType type : BalanceType.values()) {
-                double amount = currencyService.getBalance(currency, type);
-                if (amount > 0) {
-                    String formattedAmount = messageUtils.formatWithSpacesAndDecimals(String.valueOf(amount));
-                    String line = "%s: %s\n".formatted(currency.getNameForBalance(), formattedAmount);
-                    switch (type) {
-                        case OWN -> own.append(line);
-                        case FOREIGN -> foreign.append(line);
-                        case DEBT -> debt.append(line);
-                    }
-                }
+            long amount = currencyService.getBalance(currency, type);
+            if (amount > 0) {
+                String formattedAmount = messageUtils.formatWithSpacesAndDecimals(amount);
+                // Валюта жирная, сумма обычная
+                builder.append("> *")
+                        .append(currency.name().toUpperCase()) // или getNameForBalance()
+                        .append(":* ")
+                        .append(formattedAmount)
+                        .append("\n");
             }
         }
-
-        StringBuilder result = new StringBuilder();
-        if (own.length() > "Баланс наш:\n".length()) result.append(own).append("\n");
-        if (foreign.length() > "Баланс чужой:\n".length()) result.append(foreign).append("\n");
-        if (debt.length() > "Долг:\n".length()) result.append(debt);
-
-        telegramSender.sendText(chatId, result.toString().trim());
     }
 
     public void sendTranspositionOrInvoiceApprove(long chatId) {
@@ -289,18 +371,18 @@ public class MenuService {
         }
 
         message.setText("""
-                Подтвердить?
-                %s
-                Клиент: %s
-                %s
-                Получено: %s
-                Выдано: %s
-                """.formatted(
-                dealType,
-                deal.getBuyerName(),
-                deal.getCityFromTo(),
-                receivedCurrencies,
-                issuedCurrencies
+                        Подтвердить?
+                        %s
+                        Клиент: %s
+                        %s
+                        Получено: %s
+                        Выдано: %s
+                        """.formatted(
+                        dealType,
+                        deal.getBuyerName(),
+                        deal.getCityFromTo(),
+                        receivedCurrencies,
+                        issuedCurrencies
                 )
         );
 
@@ -311,7 +393,7 @@ public class MenuService {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(List.of(row));
-        message.setReplyMarkup(markup);
+        message.setReplyMarkup(addBackCancelButtons(markup));
 
         Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
@@ -350,13 +432,13 @@ public class MenuService {
         }
 
         message.setText("""
-                Перестановка успешно проведена
-                %s
-                Клиент: %s
-                %s
-                Получено: %s
-                Выдано: %s
-                """.formatted(
+                        Перестановка успешно проведена
+                        %s
+                        Клиент: %s
+                        %s
+                        Получено: %s
+                        Выдано: %s
+                        """.formatted(
                         dealType,
                         deal.getBuyerName(),
                         deal.getCityFromTo(),
@@ -397,7 +479,7 @@ public class MenuService {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
-        message.setReplyMarkup(markup);
+        message.setReplyMarkup(addBackCancelButtons(markup));
 
         Message msg = telegramSender.send(message);
         userService.addMessageToDel(chatId, msg.getMessageId());
@@ -405,7 +487,7 @@ public class MenuService {
         return msg;
     }
 
-    public Message sendSelectAmountType(long chatId) {
+    public void sendSelectAmountType(long chatId) {
         User user = userService.getUser(chatId);
         InlineKeyboardButton buttonGive = createButton("%s %s Забрать"
                         .formatted(
@@ -434,12 +516,13 @@ public class MenuService {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
-        message.setReplyMarkup(markup);
-
-        return telegramSender.send(message);
+        message.setReplyMarkup(addBackCancelButtons(markup));
+        Message msg = telegramSender.send(message);
+        userService.addMessageToEdit(chatId, msg.getMessageId());
+        userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
-    public Message sendSelectCurrencyType(long chatId) {
+    public void sendSelectCurrencyType(long chatId) {
         InlineKeyboardButton buttonGive = createButton("/курс", "division");
         InlineKeyboardButton buttonReceive = createButton("*курс", "multiplication");
 
@@ -457,9 +540,24 @@ public class MenuService {
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         markup.setKeyboard(keyboard);
-        message.setReplyMarkup(markup);
+        message.setReplyMarkup(addBackCancelButtons(markup));
+        Message msgToReturn = telegramSender.send(message);
+        userService.addMessageToEdit(chatId, msgToReturn.getMessageId());
+        userService.addMessageToDel(chatId, msgToReturn.getMessageId());
+    }
 
-        return telegramSender.send(message);
+    public void sendBalanceMovedMessage(long chatId) {
+        User user = userService.getUser(chatId);
+        Deal deal = user.getCurrentDeal();
+        String balanceFrom = user.getBalanceFrom().getDisplayName();
+        String balanceTo = user.getBalanceTo().getDisplayName();
+        telegramSender.sendText(chatId, """
+                Баланс изменен ✅
+                %s -> %s
+                Сумма: %s %s
+                """.formatted(
+                balanceFrom, balanceTo,
+                deal.getMoneyTo().get(0).getAmount(), deal.getMoneyTo().get(0).getCurrency()));
     }
 
     public void sendBalanceChangedMessage(long chatId) {
@@ -479,21 +577,52 @@ public class MenuService {
 
     public void sendDealCompletedMessage(long chatId) {
         Deal deal = userService.getUser(chatId).getCurrentDeal();
-        telegramSender.sendText(chatId, """
-                Сделка завершена ✅
-                Имя: %s
-                Сумма получена: %s %s
-                Курс: %s
-                Сумма выдана: %s %s
-                """.formatted(
-                deal.getBuyerName(),
-                Math.round(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
-                deal.getExchangeRate(),
-                Math.round(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()));
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setParseMode("MarkdownV2");
+        message.setChatId(chatId);
+
+        if (deal.getDealType() == DealType.CUSTOM) {
+            message.setText(messageUtils.escapeMarkdown("""
+                                    Сделка завершена ✅
+                                    *%s*
+                                    Имя: %s
+                                    Получено: *%s %s*
+                                    Курс: %s
+                                    Выдано: *%s %s*
+                                    """.formatted(
+                                    deal.getDealType().getType(),
+                                    deal.getBuyerName(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                                    deal.getExchangeRate(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
+                            )
+                    )
+            );
+        } else {
+            message.setText(messageUtils.escapeMarkdown("""
+                                    Сделка завершена ✅
+                                    *%s %s*
+                                    Имя: %s
+                                    Получено: *%s %s*
+                                    Курс: %s
+                                    Выдано: *%s %s*
+                                    """.formatted(
+                                    deal.getDealType().getType(), deal.getMoneyFrom().get(0).getCurrency().getNameForBalance(),
+                                    deal.getBuyerName(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                                    deal.getExchangeRate(),
+                                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
+                            )
+                    )
+            );
+        }
+
+        telegramSender.send(message);
     }
 
-    public Message sendEnterExchangeRate(long chatId) {
-        return telegramSender.sendText(chatId, "Введите курс:");
+    public void sendEnterExchangeRate(long chatId) {
+        telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
     }
 
 }

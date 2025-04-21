@@ -36,9 +36,24 @@ public class ExchangeProcessor {
             case BUY, CUSTOM -> processBuy(chatId, user, deal);
             case SELL -> processSell(chatId, user, deal);
             case CHANGE_BALANCE -> processChangeBalance(chatId, user, deal);
+            case MOVING_BALANCE -> processMovingBalance(chatId, user, deal);
             case TRANSPOSITION, INVOICE -> processTranspositionOrInvoiceDeal(chatId, user, deal);
         }
 
+    }
+
+    private void processMovingBalance(long chatId, User user, Deal deal) {
+        BalanceType balanceTypeFrom = user.getBalanceFrom();
+        BalanceType balanceTypeTo = user.getBalanceTo();
+        long toBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo);
+        long fromBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeFrom);
+
+        currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeFrom, fromBalance - deal.getAmountTo());
+        currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo, toBalance + deal.getAmountTo());
+
+        menuService.sendBalanceMovedMessage(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        userService.resetUserState(user);
     }
 
     private void processTranspositionOrInvoiceDeal(long chatId, User user, Deal deal) {
@@ -47,8 +62,8 @@ public class ExchangeProcessor {
         moneyTo
                 .forEach(e -> {
                     Money money = e.getCurrency();
-                    double currentBalance = currencyService.getBalance(money, BalanceType.OWN);
-                    double newBalance = currentBalance + e.getAmount();
+                    long currentBalance = currencyService.getBalance(money, BalanceType.OWN);
+                    long newBalance = currentBalance + e.getAmount();
                     currencyService.updateBalance(money, BalanceType.OWN, newBalance);
                 });
 
@@ -57,19 +72,19 @@ public class ExchangeProcessor {
         moneyFrom
                 .forEach(e -> {
                     Money money = e.getCurrency();
-                    double currentBalance = currencyService.getBalance(money, BalanceType.OWN);
-                    double newBalance = currentBalance - e.getAmount();
+                    long currentBalance = currencyService.getBalance(money, BalanceType.OWN);
+                    long newBalance = currentBalance - e.getAmount();
                     currencyService.updateBalance(money, BalanceType.OWN, newBalance);
                 });
         menuService.sendTranspositionOrInvoiceComplete(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-        resetUserState(user);
+        userService.resetUserState(user);
     }
 
     public void cancel(long chatId) {
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         User user = userService.getUser(chatId);
-        resetUserState(user);
+        userService.resetUserState(user);
         telegramSender.sendText(chatId, "Сделка отменена.");
     }
 
@@ -79,42 +94,32 @@ public class ExchangeProcessor {
         );
     }
 
-    private void resetUserState(User user) {
-
-        user.setCurrentDeal(null);
-        user.setStatus(Status.IDLE);
-        user.setMessages(null);
-        user.setMessageToEdit(null);
-        userService.save(user);
-    }
-
-
-    private double getOwnBalance(Money currency) {
+    private long getOwnBalance(Money currency) {
         return currencyService.getBalance(currency, BalanceType.OWN);
     }
 
-    private void updateOwnBalance(Money currency, double newBalance) {
+    private void updateOwnBalance(Money currency, long newBalance) {
         currencyService.updateBalance(currency, BalanceType.OWN, newBalance);
     }
 
-    private double calculateAmountWithRate(double amount, double rate) {
-        return amount * rate;
+    private long calculateAmountWithRate(long amount, double rate) {
+        return Math.round(amount * rate);
     }
 
     private void sendInsufficientFundsMessage(long chatId, Money currency) {
         Message botMsg = telegramSender.sendText(chatId, "Недостаточно средств: " + currency);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-        resetUserState(userService.getUser(chatId));
+        userService.resetUserState(userService.getUser(chatId));
     }
 
     private void processBuy(long chatId, User user, Deal deal) {
-        double fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
-        double toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
-        double required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
+        long fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
+        long toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
+        long required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
 
         if (fromBalance < required) {
             sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
-            resetUserState(user);
+            userService.resetUserState(user);
             return;
         }
 
@@ -122,27 +127,27 @@ public class ExchangeProcessor {
         updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-        resetUserState(user);
+        userService.resetUserState(user);
     }
 
     private void processSell(long chatId, User user, Deal deal) {
-        double fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
+        long fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
         if (fromBalance < deal.getAmountFrom()) {
             sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
-            resetUserState(user);
+            userService.resetUserState(user);
             return;
         }
 
-        double toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
+        long toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
         updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - deal.getAmountFrom());
         updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-        resetUserState(user);
+        userService.resetUserState(user);
     }
 
     private void processChangeBalance(long chatId, User user, Deal deal) {
-        double toForeignBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN);
+        long toForeignBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN);
         ChangeBalanceType type = user.getChangeBalanceType();
 
         switch (type) {
@@ -158,6 +163,6 @@ public class ExchangeProcessor {
 
         menuService.sendBalanceChangedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-        resetUserState(user);
+        userService.resetUserState(user);
     }
 }

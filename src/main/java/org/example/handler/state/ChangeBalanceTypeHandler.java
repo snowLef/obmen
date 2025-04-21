@@ -46,7 +46,7 @@ public class ChangeBalanceTypeHandler implements UserStateHandler {
         }
 
         user.setChangeBalanceType(balanceType);
-        user.setStatus(Status.AWAITING_FIRST_CURRENCY);
+        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
         userService.save(user);
         menuService.sendSelectCurrency(chatId, "Выберите валюту:");
 

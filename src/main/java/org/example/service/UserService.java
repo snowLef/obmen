@@ -4,7 +4,6 @@ import jakarta.transaction.Transactional;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.enums.DealType;
-import org.example.model.enums.Money;
 import org.example.model.User;
 import org.example.repository.UserRepository;
 import org.example.model.enums.Status;
@@ -23,6 +22,14 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
+    public void resetUserState(User user) {
+        user.setCurrentDeal(null);
+        user.pushStatus(Status.IDLE);
+        user.setMessages(null);
+        user.setMessageToEdit(null);
+        save(user);
+    }
+
     public User getUser(Long chatId) {
         return userRepository.findByChatId(chatId).orElse(null);
     }
@@ -38,7 +45,7 @@ public class UserService {
 
     public void saveUserStatus(Long chatId, Status status) {
         userRepository.findByChatId(chatId).ifPresent(user -> {
-            user.setStatus(status);
+            user.pushStatus(status);
             userRepository.save(user);
         });
     }

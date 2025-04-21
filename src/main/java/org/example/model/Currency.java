@@ -25,20 +25,20 @@ public class Currency {
     @MapKeyColumn(name = "balance_type")
     @MapKeyEnumerated(EnumType.STRING)
     @Column(name = "amount")
-    private Map<BalanceType, Double> balances = new EnumMap<>(BalanceType.class);
+    private Map<BalanceType, Long> balances = new EnumMap<>(BalanceType.class);
 
-    public Double getBalance(BalanceType type) {
-        return balances.getOrDefault(type, 0.0);
+    public long getBalance(BalanceType type) {
+        return balances.getOrDefault(type, 0L);
     }
 
-    public void updateBalance(BalanceType type, double newAmount) {
+    public void updateBalance(BalanceType type, long newAmount) {
         balances.put(type, newAmount);
     }
 
-    public void move(BalanceType from, BalanceType to, double amount) {
-        double fromBalance = getBalance(from);
-        double toBalance = getBalance(to);
-        if (fromBalance >= amount) {
+    public void move(BalanceType from, BalanceType to, long amount) {
+        long fromBalance = getBalance(from);
+        long toBalance = getBalance(to);
+        if (fromBalance >= amount && from != BalanceType.OWN) {
             balances.put(from, fromBalance - amount);
             balances.put(to, toBalance + amount);
         } else {

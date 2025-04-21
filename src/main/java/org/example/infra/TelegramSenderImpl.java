@@ -2,7 +2,9 @@ package org.example.infra;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.bot.ObmenBot;
+import org.example.service.UserService;
 import org.example.ui.MenuService;
+import org.example.util.MessageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -18,10 +20,27 @@ public class TelegramSenderImpl implements TelegramSender {
 
     private ObmenBot obmenBot;
     private MenuService menuService;
+    private UserService userService;
+    private MessageUtils messageUtils;
 
     @Autowired
     public void setObmenBot(ObmenBot obmenBot) {
         this.obmenBot = obmenBot;
+    }
+
+    @Autowired
+    public void setMenuService(MenuService menuService) {
+        this.menuService = menuService;
+    }
+
+    @Autowired
+    public void setUserService(UserService userService) {
+        this.userService = userService;
+    }
+
+    @Autowired
+    public void setMessageUtils(MessageUtils messageUtils) {
+        this.messageUtils = messageUtils;
     }
 
     @Override
@@ -35,22 +54,15 @@ public class TelegramSenderImpl implements TelegramSender {
     }
 
     @Override
-    public void send(EditMessageText message) {
-        try {
-            obmenBot.execute(message);
-        } catch (TelegramApiException e) {
-            log.error("Failed to edit message", e);
-        }
-    }
-
-    @Override
     public Message sendText(Long chatId, String text) {
         SendMessage message = new SendMessage(chatId.toString(), text);
+        Message returnMsg;
         try {
-            return obmenBot.execute(message);
+            returnMsg = obmenBot.execute(message);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
+        return returnMsg;
     }
 
     @Override
@@ -58,7 +70,8 @@ public class TelegramSenderImpl implements TelegramSender {
         EditMessageText message = new EditMessageText();
         message.setChatId(chatId);
         message.setMessageId(messageToEdit);
-        message.setText(s);
+        message.setText(messageUtils.escapeMarkdown(s));
+        message.setParseMode("MarkdownV2");
         try {
             obmenBot.execute(message);
         } catch (TelegramApiException e) {
@@ -80,6 +93,20 @@ public class TelegramSenderImpl implements TelegramSender {
     }
 
     @Override
+    public void sendTextWithKeyboard(Long chatId, String text) {
+        SendMessage message = new SendMessage(chatId.toString(), messageUtils.escapeMarkdown(text));
+        message.setReplyMarkup(menuService.addBackCancelButtons(null));
+        message.setParseMode("MarkdownV2");
+        Message returnMsg;
+        try {
+            returnMsg = obmenBot.execute(message);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+        userService.addMessageToDel(chatId, returnMsg.getMessageId());
+    }
+
+    @Override
     public void deleteMessage(Long chatId, Integer messageToDelete) {
         try {
             obmenBot.deleteMessage(new DeleteMessage(chatId.toString(), messageToDelete));
@@ -94,17 +121,11 @@ public class TelegramSenderImpl implements TelegramSender {
                 .text(text)
                 .replyMarkup(markup)
                 .build();
-
         try {
             return obmenBot.execute(sendMessage);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
-    }
-
-    @Autowired
-    public void setMenuService(MenuService menuService) {
-        this.menuService = menuService;
     }
 }

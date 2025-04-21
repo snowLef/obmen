@@ -52,33 +52,45 @@ public class CommandMapConfig {
         Map<String, CommandHandler> map = new LinkedHashMap<>();
 
         // Курсы
-        map.put("Купить Доллар", ctx -> start(ctx, RUB, USD, BUY));
-        map.put("Продать Доллар", ctx -> start(ctx, USD, RUB, SELL));
-        map.put("Купить Евро", ctx -> start(ctx, RUB, EUR, BUY));
-        map.put("Продать Евро", ctx -> start(ctx, EUR, RUB, SELL));
-        map.put("Купить Белый Доллар", ctx -> start(ctx, RUB, USDW, BUY));
-        map.put("Продать Белый Доллар", ctx -> start(ctx, USDW, RUB, SELL));
-        map.put("Купить Tether", ctx -> start(ctx, RUB, USDT, BUY));
-        map.put("Продать Tether", ctx -> start(ctx, USDT, RUB, SELL));
+        map.put("Купить USD", ctx -> start(ctx, RUB, USD, BUY));
+        map.put("Продать USD", ctx -> start(ctx, USD, RUB, SELL));
+        map.put("Купить EUR", ctx -> start(ctx, RUB, EUR, BUY));
+        map.put("Продать EUR", ctx -> start(ctx, EUR, RUB, SELL));
+        map.put("Купить USD (Б)", ctx -> start(ctx, RUB, USDW, BUY));
+        map.put("Продать USD (Б)", ctx -> start(ctx, USDW, RUB, SELL));
+        map.put("Купить USDT", ctx -> start(ctx, RUB, USDT, BUY));
+        map.put("Продать USDT", ctx -> start(ctx, USDT, RUB, SELL));
 
         // Сервисные
         map.put("Меню", ctx -> menuService.sendMainMenu(ctx.chatId()));
         map.put("/start", ctx -> menuService.sendMainMenu(ctx.chatId()));
 
         map.put("Сложный обмен", this::handleCustomChange);
-        map.put("+/-", this::handlePlusMinus);
-
         map.put("Перестановка", ctx -> handleTranspositionOrInvoice(ctx, TRANSPOSITION));
         map.put("Invoice", ctx -> handleTranspositionOrInvoice(ctx, INVOICE));
+
+        map.put("+/-", this::handlePlusMinus);
+        map.put("Перемещение", this::movingTheBalance);
+        map.put("Изменение", this::movingTheBalance);
+        map.put("Баланс", ctx -> menuService.sendBalance(ctx.chatId()));
 
         map.put("Принимаем +", ctx -> handleChangeBalance(ctx, ChangeBalanceType.GET));
         map.put("Отдаем +", ctx -> handleChangeBalance(ctx, ChangeBalanceType.GIVE));
         map.put("Даем в долг", ctx -> handleChangeBalance(ctx, ChangeBalanceType.LEND));
         map.put("Возврат долга", ctx -> handleChangeBalance(ctx, ChangeBalanceType.DEBT_REPAYMENT));
 
-        map.put("Баланс", ctx -> menuService.sendBalance(ctx.chatId()));
 
         return map;
+    }
+
+    private void movingTheBalance(CommandContext ctx) {
+        User user = userService.getUser(ctx.chatId());
+        user.pushStatus(Status.AWAITING_CHOOSE_BALANCE_FROM);
+        Deal deal = new Deal();
+        deal.setDealType(MOVING_BALANCE);
+        user.setCurrentDeal(deal);
+        userService.save(user);
+        menuService.sendSelectBalance(ctx.chatId(), "Откуда списать?");
     }
 
     private void handleTranspositionOrInvoice(CommandContext ctx, DealType dealType) {
@@ -86,37 +98,33 @@ public class CommandMapConfig {
         User user = userService.getUser(ctx.chatId());
         user.setCurrentDeal(new Deal());
         user.getCurrentDeal().setDealType(dealType);
-        user.setStatus(Status.AWAITING_BUYER_NAME);
+        user.pushStatus(Status.AWAITING_BUYER_NAME);
         userService.save(user);
-        Message message1 = telegramSender.sendText(ctx.chatId(), "Введите имя:");
-        userService.addMessageToDel(ctx.chatId(), message1.getMessageId());
+        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
     }
 
     private void handlePlusMinus(CommandContext ctx) {
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
-        userService.startDeal(ctx.chatId(), new CurrencyAmount(null, 0d), new CurrencyAmount(null, 0d), CHANGE_BALANCE);
+        userService.startDeal(ctx.chatId(), new CurrencyAmount(null, 0), new CurrencyAmount(null, 0), CHANGE_BALANCE);
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
-        Message message1 = telegramSender.sendText(ctx.chatId(), "Введите имя:");
-        userService.addMessageToDel(ctx.chatId(), message1.getMessageId());
-
+        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
     }
 
     private void handleCustomChange(CommandContext ctx) {
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
-        var deal = new Deal();
+        Deal deal = new Deal();
         deal.setDealType(DealType.CUSTOM);
         userService.saveUserCurrentDeal(ctx.chatId(), deal);
 
-        var botMsg = telegramSender.sendText(ctx.chatId(), BotCommands.ASK_FOR_NAME);
+        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
-        userService.addMessageToDel(ctx.chatId(), botMsg.getMessageId());
     }
 
     private void handleChangeBalance(CommandContext ctx, ChangeBalanceType type) {
         long chatId = ctx.chatId();
-        var user = userService.getOrCreate(chatId);
+        User user = userService.getOrCreate(chatId);
         user.setChangeBalanceType(type);
-        user.setStatus(Status.AWAITING_FIRST_CURRENCY);
+        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
         userService.save(user);
         menuService.sendSelectCurrency(chatId, "Выберите валюту:");
     }
@@ -125,11 +133,9 @@ public class CommandMapConfig {
         long chatId = ctx.chatId();
         Message message = ctx.message();
 
-        userService.startDeal(chatId, new CurrencyAmount(from, 0d), new CurrencyAmount(to, 0d), dealType);
+        userService.startDeal(chatId, new CurrencyAmount(from, 0), new CurrencyAmount(to, 0), dealType);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         userService.addMessageToDel(chatId, message.getMessageId());
-
-        var botMsg = telegramSender.sendText(chatId, BotCommands.ASK_FOR_NAME);
-        userService.addMessageToDel(chatId, botMsg.getMessageId());
+        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
     }
 }

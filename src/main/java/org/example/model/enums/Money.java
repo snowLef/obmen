@@ -6,12 +6,12 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum Money {
-    USD ("Usd", "Usd"),
-    EUR ("Eur", "Eur"),
-    USDW ("UsdW", "UsdW"),
-    RUB ("Rub", "Rub"),
-    YE ("Y.e.", "Y.e."),
-    USDT ("UsdT", "\nUsdT");
+    USD ("Usd", "USD"),
+    EUR ("Eur", "EUR"),
+    USDW ("UsdW", "USD (Б)"),
+    RUB ("Rub", "RUB"),
+    YE ("Y.e.", "Y.E."),
+    USDT ("UsdT", "\nUSDT");
 
     private final String name;
     private final String nameForBalance;

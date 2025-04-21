@@ -24,6 +24,7 @@ public class ExchangeRateTypeCallbackHandler implements CallbackCommandHandler {
 
     private final TelegramSender telegramSender;
     private final UserService userService;
+    private final MenuService menuService;
 
     @Override
     public boolean supports(String data) {
@@ -45,11 +46,11 @@ public class ExchangeRateTypeCallbackHandler implements CallbackCommandHandler {
 
         if (user.getStatus().equals(Status.AWAITING_EXCHANGE_RATE_TYPE)) {
             user.setCurrencyType(type);
-            user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+            user.pushStatus(Status.AWAITING_APPROVE);
             telegramSender.editMsg(chatId, user.getMessageToEdit(), "Формула расчета: %s".formatted(user.getCurrencyType().getText()));
             userService.save(user);
-            Message msg = telegramSender.sendText(chatId, "Введите курс:");
-            userService.addMessageToDel(chatId, msg.getMessageId());
+//            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
+            menuService.sendApproveMenu(chatId);
         }
     }
 }

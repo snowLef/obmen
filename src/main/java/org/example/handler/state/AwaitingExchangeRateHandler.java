@@ -33,16 +33,20 @@ public class AwaitingExchangeRateHandler implements UserStateHandler {
             Deal deal = user.getCurrentDeal();
             deal.setExchangeRate(rate);
 
+            double to = deal.getAmountTo() * rate;
+            double from = deal.getAmountFrom() * rate;
+
             switch (deal.getDealType()) {
                 case CUSTOM -> handleCustomRate(user, rate);
-                case BUY -> deal.setAmountFrom((double) Math.round(deal.getAmountTo() * rate));
-                case SELL -> deal.setAmountTo((double) Math.round(deal.getAmountFrom() * rate));
+                case BUY -> deal.setAmountFrom(Math.round(to));
+                case SELL -> deal.setAmountTo(Math.round(from));
             }
 
-            user.setStatus(Status.AWAITING_APPROVE);
+            user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
             userService.save(user);
             userService.addMessageToDel(chatId, msgId);
-            menuService.sendApproveMenu(chatId);
+            menuService.sendSelectCurrencyType(chatId);
+//            menuService.sendApproveMenu(chatId);
 
         } catch (NumberFormatException e) {
             Message botMsg = telegramSender.sendText(chatId, "Неверный формат курса.");
@@ -53,22 +57,22 @@ public class AwaitingExchangeRateHandler implements UserStateHandler {
     private void handleCustomRate(User user, double rate) {
         Deal deal = user.getCurrentDeal();
 
-        Double amountFrom = deal.getAmountFrom();
-        Double amountTo = deal.getAmountTo();
+        long amountFrom = deal.getAmountFrom();
+        long amountTo = deal.getAmountTo();
         AmountType amountType = user.getAmountType();
         CurrencyType currencyType = user.getCurrencyType();
 
         if (amountType == AmountType.GIVE) {
             if (currencyType == CurrencyType.DIVISION) {
-                deal.getMoneyTo().get(0).setAmount(amountFrom / rate);
+                deal.getMoneyTo().get(0).setAmount(Math.round(amountFrom / rate));
             } else if (currencyType == CurrencyType.MULTIPLICATION) {
-                deal.getMoneyTo().get(0).setAmount(amountFrom * rate);
+                deal.getMoneyTo().get(0).setAmount(Math.round(amountFrom * rate));
             }
         } else if (amountType == AmountType.RECEIVE) {
             if (currencyType == CurrencyType.DIVISION) {
-                deal.getMoneyFrom().get(0).setAmount(amountTo / rate);
+                deal.getMoneyFrom().get(0).setAmount(Math.round(amountTo / rate));
             } else if (currencyType == CurrencyType.MULTIPLICATION) {
-                deal.getMoneyFrom().get(0).setAmount(amountTo * rate);
+                deal.getMoneyFrom().get(0).setAmount(Math.round(amountTo * rate));
             }
         }
         dealRepository.save(deal);

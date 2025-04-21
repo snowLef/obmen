@@ -1,6 +1,7 @@
 package org.example.handler.state;
 
 import lombok.RequiredArgsConstructor;
+import org.example.constants.BotCommands;
 import org.example.infra.TelegramSender;
 import org.example.model.User;
 import org.example.model.enums.DealType;
@@ -32,13 +33,11 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
         switch (dealType) {
             case BUY -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName()));
-                userService.addMessageToDel(chatId, botMsg.getMessageId());
+                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getNameForBalance()));
             }
             case SELL -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName()));
-                userService.addMessageToDel(chatId, botMsg.getMessageId());
+                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getNameForBalance()));
             }
             case CUSTOM -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
@@ -50,8 +49,7 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
             }
             case TRANSPOSITION, INVOICE -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_CITY_NAME);
-                Message botMsg = telegramSender.sendText(chatId, "Откуда/куда?");
-                userService.addMessageToDel(chatId, botMsg.getMessageId());
+                telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_CITY);
             }
         }
     }

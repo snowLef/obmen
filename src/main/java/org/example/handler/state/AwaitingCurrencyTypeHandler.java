@@ -29,7 +29,7 @@ public class AwaitingCurrencyTypeHandler implements UserStateHandler {
         }
 
         user.setCurrencyType(selectedType);
-        user.setStatus(Status.AWAITING_EXCHANGE_RATE);
+        user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
         userService.save(user);
 
         menuService.sendEnterExchangeRate(chatId);
