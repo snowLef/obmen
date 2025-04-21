@@ -1,6 +1,7 @@
 package org.example.service;
 
 import jakarta.transaction.Transactional;
+import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
@@ -65,11 +66,20 @@ public class UserService {
         });
     }
 
-    public void startDeal(Long chatId, Money from, Money to, DealType type) {
+    public void saveCityName(Long chatId, String cityName) {
+        userRepository.findByChatId(chatId).ifPresent(user -> {
+            if (user.getCurrentDeal() != null) {
+                user.getCurrentDeal().setCityFromTo(cityName);
+                userRepository.save(user);
+            }
+        });
+    }
+
+    public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type) {
         userRepository.findByChatId(chatId).ifPresent(user -> {
             Deal deal = new Deal();
-            deal.setMoneyFrom(from);
-            deal.setMoneyTo(to);
+            deal.setMoneyFrom(List.of(from));
+            deal.setMoneyTo(List.of(to));
             deal.setDealType(type);
             user.setCurrentDeal(deal);
             userRepository.save(user);

@@ -32,12 +32,12 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
         switch (dealType) {
             case BUY -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                var botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().getName()));
+                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName()));
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
             case SELL -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                var botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().getName()));
+                Message botMsg = telegramSender.sendText(chatId, "Введите сумму в %s:".formatted(user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName()));
                 userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
             case CUSTOM -> {
@@ -47,6 +47,11 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
             case CHANGE_BALANCE -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_CHANGE_BALANCE_TYPE);
                 menuService.sendChangeBalanceMenu(chatId);
+            }
+            case TRANSPOSITION, INVOICE -> {
+                userService.saveUserStatus(chatId, Status.AWAITING_CITY_NAME);
+                Message botMsg = telegramSender.sendText(chatId, "Откуда/куда?");
+                userService.addMessageToDel(chatId, botMsg.getMessageId());
             }
         }
     }

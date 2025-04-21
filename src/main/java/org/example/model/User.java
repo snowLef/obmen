@@ -43,6 +43,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     private AmountType amountType;
 
+    private int currentCurrencyIndex;
+
     @Enumerated(EnumType.STRING)
     private CurrencyType currencyType;
 

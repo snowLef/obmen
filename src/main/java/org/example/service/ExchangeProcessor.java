@@ -36,8 +36,34 @@ public class ExchangeProcessor {
             case BUY, CUSTOM -> processBuy(chatId, user, deal);
             case SELL -> processSell(chatId, user, deal);
             case CHANGE_BALANCE -> processChangeBalance(chatId, user, deal);
+            case TRANSPOSITION, INVOICE -> processTranspositionOrInvoiceDeal(chatId, user, deal);
         }
 
+    }
+
+    private void processTranspositionOrInvoiceDeal(long chatId, User user, Deal deal) {
+        List<CurrencyAmount> moneyTo = user.getCurrentDeal().getMoneyTo();
+
+        moneyTo
+                .forEach(e -> {
+                    Money money = e.getCurrency();
+                    double currentBalance = currencyService.getBalance(money, BalanceType.OWN);
+                    double newBalance = currentBalance + e.getAmount();
+                    currencyService.updateBalance(money, BalanceType.OWN, newBalance);
+                });
+
+        List<CurrencyAmount> moneyFrom = user.getCurrentDeal().getMoneyFrom();
+
+        moneyFrom
+                .forEach(e -> {
+                    Money money = e.getCurrency();
+                    double currentBalance = currencyService.getBalance(money, BalanceType.OWN);
+                    double newBalance = currentBalance - e.getAmount();
+                    currencyService.updateBalance(money, BalanceType.OWN, newBalance);
+                });
+        menuService.sendTranspositionOrInvoiceComplete(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        resetUserState(user);
     }
 
     public void cancel(long chatId) {
@@ -77,58 +103,57 @@ public class ExchangeProcessor {
 
     private void sendInsufficientFundsMessage(long chatId, Money currency) {
         Message botMsg = telegramSender.sendText(chatId, "Недостаточно средств: " + currency);
-        userService.addMessageToDel(chatId, botMsg.getMessageId());
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         resetUserState(userService.getUser(chatId));
     }
 
     private void processBuy(long chatId, User user, Deal deal) {
-        double fromBalance = getOwnBalance(deal.getMoneyFrom());
-        double toBalance = getOwnBalance(deal.getMoneyTo());
+        double fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
+        double toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
         double required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
 
         if (fromBalance < required) {
-            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom());
+            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
             resetUserState(user);
             return;
         }
 
-        updateOwnBalance(deal.getMoneyFrom(), fromBalance - required);
-        updateOwnBalance(deal.getMoneyTo(), toBalance + deal.getAmountTo());
+        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - required);
+        updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         resetUserState(user);
     }
 
     private void processSell(long chatId, User user, Deal deal) {
-        double fromBalance = getOwnBalance(deal.getMoneyFrom());
+        double fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
         if (fromBalance < deal.getAmountFrom()) {
-            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom());
+            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
             resetUserState(user);
             return;
         }
 
-        double toBalance = getOwnBalance(deal.getMoneyTo());
-        updateOwnBalance(deal.getMoneyFrom(), fromBalance - deal.getAmountFrom());
-        updateOwnBalance(deal.getMoneyTo(), toBalance + deal.getAmountTo());
+        double toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
+        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - deal.getAmountFrom());
+        updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         resetUserState(user);
     }
 
     private void processChangeBalance(long chatId, User user, Deal deal) {
-        double toForeignBalance = currencyService.getBalance(deal.getMoneyTo(), BalanceType.FOREIGN);
+        double toForeignBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN);
         ChangeBalanceType type = user.getChangeBalanceType();
 
         switch (type) {
             case GET ->
-                    currencyService.updateBalance(deal.getMoneyTo(), BalanceType.FOREIGN, toForeignBalance + deal.getAmountTo());
+                    currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN, toForeignBalance + deal.getAmountTo());
             case GIVE ->
-                    currencyService.updateBalance(deal.getMoneyTo(), BalanceType.FOREIGN, toForeignBalance - deal.getAmountTo());
+                    currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN, toForeignBalance - deal.getAmountTo());
             case LEND ->
-                    currencyService.moveBalance(deal.getMoneyTo(), BalanceType.OWN, BalanceType.DEBT, deal.getAmountTo());
+                    currencyService.moveBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.OWN, BalanceType.DEBT, deal.getAmountTo());
             case DEBT_REPAYMENT ->
-                    currencyService.moveBalance(deal.getMoneyTo(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
+                    currencyService.moveBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
         }
 
         menuService.sendBalanceChangedMessage(chatId);

@@ -6,33 +6,85 @@ import lombok.Setter;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
 
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "deals")
 @Getter
 @Setter
 public class Deal {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // или GenerationType.AUTO
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Enumerated(EnumType.STRING)
-    private Money moneyFrom;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "deal_money_from", joinColumns = @JoinColumn(name = "deal_id"))
+    private List<CurrencyAmount> moneyFrom = new ArrayList<>();
 
-    @Enumerated(EnumType.STRING)
-    private Money moneyTo;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "deal_money_to", joinColumns = @JoinColumn(name = "deal_id"))
+    private List<CurrencyAmount> moneyTo = new ArrayList<>();
 
     private String buyerName;
 
-    private Double currentAmount;
-
-    private Double amountTo;
-
-    private Double amountFrom;
+    private String cityFromTo;
 
     private Double exchangeRate;
 
+    private Double currentAmount;
+
     @Enumerated(EnumType.STRING)
     private DealType dealType;
+
+
+    public List<Money> getMoneyFromList() {
+        return moneyFrom.stream()
+                .map(CurrencyAmount::getCurrency)
+                .toList();
+    }
+
+    public List<Money> getMoneyToList() {
+        return moneyTo.stream()
+                .map(CurrencyAmount::getCurrency)
+                .toList();
+    }
+
+    public void addMoneyFrom(Money money) {
+        if (moneyFrom.stream().noneMatch(ca -> ca.getCurrency() == money)) {
+            moneyFrom.add(new CurrencyAmount(money, null));
+        }
+    }
+
+    public void removeMoneyFrom(Money money) {
+        moneyFrom.removeIf(ca -> ca.getCurrency() == money);
+    }
+
+    public void addMoneyTo(Money money) {
+        if (moneyTo.stream().noneMatch(ca -> ca.getCurrency() == money)) {
+            moneyTo.add(new CurrencyAmount(money, null));
+        }
+    }
+
+    public void removeMoneyTo(Money money) {
+        moneyTo.removeIf(ca -> ca.getCurrency() == money);
+    }
+
+    public Double getAmountFrom() {
+        return moneyFrom.get(0).getAmount();
+    }
+
+    public Double getAmountTo() {
+        return moneyTo.get(0).getAmount();
+    }
+
+    public void setAmountFrom(Double amount) {
+        moneyFrom.get(0).setAmount(amount);
+    }
+
+    public void setAmountTo(Double amount) {
+        moneyTo.get(0).setAmount(amount);
+    }
 
 }

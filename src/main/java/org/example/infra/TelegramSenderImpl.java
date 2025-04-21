@@ -2,12 +2,14 @@ package org.example.infra;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.bot.ObmenBot;
+import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 @Slf4j
@@ -15,6 +17,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 public class TelegramSenderImpl implements TelegramSender {
 
     private ObmenBot obmenBot;
+    private MenuService menuService;
 
     @Autowired
     public void setObmenBot(ObmenBot obmenBot) {
@@ -63,6 +66,19 @@ public class TelegramSenderImpl implements TelegramSender {
         }
     }
 
+    public void editMsgWithKeyboard(Long chatId, Integer messageToEdit, String s) {
+        EditMessageText message = new EditMessageText();
+        message.setChatId(chatId);
+        message.setMessageId(messageToEdit);
+        message.setText(s);
+        message.setReplyMarkup(menuService.createCurrencyKeyboard());
+        try {
+            obmenBot.execute(message);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void deleteMessage(Long chatId, Integer messageToDelete) {
         try {
@@ -72,4 +88,23 @@ public class TelegramSenderImpl implements TelegramSender {
         }
     }
 
+    public Message sendInlineKeyboard(Long chatId, String text, InlineKeyboardMarkup markup) {
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId.toString())
+                .text(text)
+                .replyMarkup(markup)
+                .build();
+
+        try {
+            return obmenBot.execute(sendMessage);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Autowired
+    public void setMenuService(MenuService menuService) {
+        this.menuService = menuService;
+    }
 }

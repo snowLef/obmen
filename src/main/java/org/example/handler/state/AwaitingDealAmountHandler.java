@@ -2,6 +2,7 @@ package org.example.handler.state;
 
 import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
+import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Status;
@@ -28,22 +29,23 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
             double amount = Double.parseDouble(text);
 
             DealType dealType = user.getCurrentDeal().getDealType();
+            Deal deal = user.getCurrentDeal();
 
             switch (dealType) {
                 case BUY -> {
-                    user.getCurrentDeal().setAmountTo(amount);
+                    deal.getMoneyTo().get(0).setAmount(amount);
                     user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                     userService.save(user);
                     sendEnterRateMessage(chatId);
                 }
                 case SELL -> {
-                    user.getCurrentDeal().setAmountFrom(amount);
+                    deal.getMoneyFrom().get(0).setAmount(amount);
                     user.setStatus(Status.AWAITING_EXCHANGE_RATE);
                     userService.save(user);
                     sendEnterRateMessage(chatId);
                 }
                 case CUSTOM -> {
-                    user.getCurrentDeal().setCurrentAmount(amount);
+                    deal.setCurrentAmount(amount);
                     user.setStatus(Status.AWAITING_SELECT_AMOUNT);
                     userService.save(user);
                     Message msg = menuService.sendSelectAmountType(chatId);
@@ -52,7 +54,7 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
                     userService.addMessageToDel(chatId, msg.getMessageId());
                 }
                 case CHANGE_BALANCE -> {
-                    user.getCurrentDeal().setAmountTo(amount);
+                    deal.getMoneyTo().get(0).setAmount(amount);
                     user.setStatus(Status.AWAITING_APPROVE);
                     userService.save(user);
                     menuService.sendApproveMenu(chatId);
