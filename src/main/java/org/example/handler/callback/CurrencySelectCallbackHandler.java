@@ -15,6 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Component
@@ -28,10 +29,9 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
 
     @Override
     public boolean supports(String data) {
-        return switch (data) {
-            case "Usd", "Eur", "UsdT", "UsdW", "Y.e.", "\nUsdT", "done" -> true;
-            default -> false;
-        };
+        if ("done".equals(data)) return true;
+        return Arrays.stream(Money.values())
+                .anyMatch(m -> m.name().equalsIgnoreCase(data));
     }
 
     public void handle(CallbackQuery query, User user) {
@@ -44,30 +44,13 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
             return;
         }
 
-        if (data.equals("done") || isMultiSelectCurrency(data)) {
+        if (deal.getDealType() == DealType.CUSTOM) {
+            handleCustomDeal(query, user, deal, chatId);
+        } else if (deal.getDealType() == DealType.CHANGE_BALANCE) {
+            handleChangeBalance(data, user, deal, chatId);
+        } else {
             handleMultiSelect(data, user, deal, chatId);
-            return;
         }
-
-        switch (deal.getDealType()) {
-            case CUSTOM -> handleCustomDeal(query, user, deal, chatId);
-            case CHANGE_BALANCE -> handleChangeBalanceDeal(query, deal, chatId);
-        }
-    }
-
-    private void handleChangeBalanceDeal(CallbackQuery query, Deal deal, Long chatId) {
-        Money selected = Money.valueOfName(query.getData());
-        deal.getMoneyTo().get(0).setCurrency(selected);
-        dealService.save(deal);
-        userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-        telegramSender.sendText(chatId, "Введите сумму: ");
-    }
-
-    private boolean isMultiSelectCurrency(String data) {
-        return switch (data) {
-            case "Usd", "Eur", "UsdT", "UsdW", "Y.e.", "\nUsdT", "done" -> true;
-            default -> false;
-        };
     }
 
     private void handleCustomDeal(CallbackQuery query, User user, Deal deal, Long chatId) {
@@ -99,7 +82,16 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         userService.save(user);
     }
 
+    private void handleChangeBalance(String data, User user, Deal deal, Long chatId) {
+        Money selected = Money.valueOfName(data);
+        deal.getMoneyTo().get(0).setCurrency(selected);
+        dealService.save(deal);
+        userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
+        telegramSender.sendText(chatId, "Введите сумму: ");
+    }
+
     private void handleMultiSelect(String data, User user, Deal deal, Long chatId) {
+        // Пользователь закончил выбор
         if (data.equals("done")) {
             handleDone(user, deal, chatId);
             return;
@@ -134,6 +126,7 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
     }
 
     private void handleDone(User user, Deal deal, Long chatId) {
+        // Логика перехода на следующий шаг
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
             userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
             telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение] Выбрано: " + userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
