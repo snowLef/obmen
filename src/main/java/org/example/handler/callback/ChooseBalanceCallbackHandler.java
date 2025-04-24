@@ -41,16 +41,15 @@ public class ChooseBalanceCallbackHandler implements CallbackCommandHandler {
 
         if (user.getStatus().equals(Status.AWAITING_CHOOSE_BALANCE_FROM)) {
             user.setBalanceFrom(type);
-            user.pushStatus(Status.AWAITING_CHOOSE_BALANCE_TO);
+            if (type == BalanceType.OWN) {
+                user.setBalanceTo(BalanceType.FOREIGN);
+            } else if (type == BalanceType.FOREIGN) {
+                user.setBalanceTo(BalanceType.OWN);
+            }
+            user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
             telegramSender.editMsg(chatId, user.getMessageToEdit(), "Будет списано с: %s".formatted(user.getBalanceFrom().getDisplayName()));
             userService.save(user);
-            menuService.sendSelectBalance(chatId, "Куда перевести?");
-        } else if (user.getStatus().equals(Status.AWAITING_CHOOSE_BALANCE_TO)) {
-            user.setBalanceTo(type);
-            user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
-            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Будет переведено на: %s".formatted(user.getBalanceTo().getDisplayName()));
-            userService.save(user);
-            menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
+            menuService.sendSelectFullCurrency(chatId, "Выберите валюту получения");
         }
     }
 }

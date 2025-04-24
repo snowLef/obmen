@@ -35,6 +35,8 @@ public class Deal {
 
     private long currentAmount;
 
+    private String comment;
+
     @Enumerated(EnumType.STRING)
     private DealType dealType;
 

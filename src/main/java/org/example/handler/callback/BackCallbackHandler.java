@@ -1,5 +1,6 @@
 package org.example.handler.callback;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.infra.TelegramSender;
@@ -10,6 +11,10 @@ import org.example.service.UserService;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Message;
+
+import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -33,6 +38,15 @@ public class BackCallbackHandler implements CallbackCommandHandler {
             return;
         }
 
+        List<Integer> msgs = userService.getMessageIdsToDeleteWithInit(chatId);
+        int maxValue = Collections.max(msgs); // Находим максимум
+        int maxIndex = msgs.indexOf(maxValue); // Находим его индекс
+
+        telegramSender.deleteMessage(chatId, maxValue);
+        msgs.remove(maxIndex);
+        user.setMessages(msgs);
+        userService.save(user);
+
         switch (previousStatus) {
             case AWAITING_BUYER_NAME -> {
                 user.pushStatus(Status.AWAITING_BUYER_NAME);
@@ -50,7 +64,11 @@ public class BackCallbackHandler implements CallbackCommandHandler {
                 user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
                 user.setPreviousStatus(null);
                 userService.save(user);
-                menuService.sendSelectCurrency(chatId, "Выберите валюту получения:");
+                if (List.of(DealType.BUY, DealType.SELL, DealType.CUSTOM).contains(user.getCurrentDeal().getDealType())) {
+                    menuService.sendSelectCurrency(chatId, "Выберите валюту получения:");
+                } else {
+                    menuService.sendSelectFullCurrency(chatId, "Выберите валюту получения:");
+                }
             }
             case AWAITING_SECOND_CURRENCY -> {
                 user.pushStatus(Status.AWAITING_SECOND_CURRENCY);
@@ -77,26 +95,48 @@ public class BackCallbackHandler implements CallbackCommandHandler {
                 telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_CITY);
             }
             case AWAITING_APPROVE -> {
+                user.setPreviousStatus(null);
                 if (user.getCurrentDeal().getDealType() == DealType.TRANSPOSITION
                         || user.getCurrentDeal().getDealType() == DealType.INVOICE) {
                     user.pushStatus(Status.AWAITING_APPROVE);
                     user.setCurrentCurrencyIndex(0);
                     userService.save(user);
                     menuService.sendTranspositionOrInvoiceApprove(chatId);
-                } else {
-
                 }
             }
             case AWAITING_EXCHANGE_RATE -> {
                 user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
+                user.setPreviousStatus(null);
                 userService.save(user);
                 menuService.sendEnterExchangeRate(chatId);
             }
             case AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM -> {
                 user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
                 user.setCurrentCurrencyIndex(0);
+                user.setPreviousStatus(null);
                 userService.save(user);
-                menuService.sendTranspositionOrInvoiceApprove(chatId);
+                telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для "
+                        + user.getCurrentDeal().getMoneyFromList().get(0).getName() + ":");
+            }
+            case AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO -> {
+                user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
+                user.setCurrentCurrencyIndex(0);
+                user.setPreviousStatus(null);
+                userService.save(user);
+                telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для "
+                        + user.getCurrentDeal().getMoneyToList().get(0).getName() + ":");
+            }
+            case AWAITING_CHOOSE_BALANCE_FROM -> {
+                user.pushStatus(Status.AWAITING_CHOOSE_BALANCE_FROM);
+                user.setPreviousStatus(null);
+                userService.save(user);
+                menuService.sendSelectBalance(chatId, "Откуда списать?");
+            }
+            case AWAITING_COMMENT -> {
+                user.pushStatus(Status.AWAITING_COMMENT);
+                user.setPreviousStatus(null);
+                userService.save(user);
+                telegramSender.sendTextWithKeyboard(chatId, "Введите комментарий: ");
             }
             default -> {
                 userService.resetUserState(user);

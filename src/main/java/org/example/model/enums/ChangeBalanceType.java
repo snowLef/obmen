@@ -6,10 +6,8 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ChangeBalanceType {
-    GET("Принимаем +"),
-    GIVE("Отдаем +"),
-    LEND("Даем в долг"),
-    DEBT_REPAYMENT("Возврат долга");
+    ADD ("Пополнение"),
+    WITHDRAWAL("Вывод");
 
     private final String type;
 }

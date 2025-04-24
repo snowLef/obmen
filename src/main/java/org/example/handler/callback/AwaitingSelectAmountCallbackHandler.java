@@ -25,30 +25,26 @@ public class AwaitingSelectAmountCallbackHandler implements CallbackCommandHandl
 
         if ("give".equals(data)) {
             user.setAmountType(AmountType.GIVE);
-//            user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
             user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
             user.getCurrentDeal().getMoneyFrom().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
             userService.save(user);
-            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
-//            menuService.sendSelectCurrencyType(chatId);
         } else if ("receive".equals(data)) {
             user.setAmountType(AmountType.RECEIVE);
-//            user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
             user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
             user.getCurrentDeal().getMoneyTo().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
             userService.save(user);
+        }
 
+            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
             if (user.getAmountType() == AmountType.GIVE) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(),
-                        user.getCurrentDeal().getCurrentAmount() + " " + user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName() + " отдать");            } else if (user.getAmountType() == AmountType.RECEIVE) {
+                        user.getCurrentDeal().getCurrentAmount() + " *" + user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName() + "* отдать");
+            } else if (user.getAmountType() == AmountType.RECEIVE) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(),
-                        user.getCurrentDeal().getCurrentAmount() + " " + user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName() + " забрать");
+                        user.getCurrentDeal().getCurrentAmount() + " *" + user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName() + "* забрать");
+            } else {
+                menuService.sendSelectAmountType(chatId);
             }
-            telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
-//            menuService.sendSelectCurrencyType(chatId);
-        } else {
-            menuService.sendSelectAmountType(chatId); // повторно покажем кнопки
-        }
     }
 
     @Override

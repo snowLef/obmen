@@ -3,7 +3,9 @@ package org.example.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.example.infra.TelegramSender;
 import org.example.model.enums.BalanceType;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.EnumMap;
 import java.util.Map;
@@ -38,7 +40,7 @@ public class Currency {
     public void move(BalanceType from, BalanceType to, long amount) {
         long fromBalance = getBalance(from);
         long toBalance = getBalance(to);
-        if (fromBalance >= amount && from != BalanceType.OWN) {
+        if (fromBalance >= amount || from == BalanceType.OWN) {
             balances.put(from, fromBalance - amount);
             balances.put(to, toBalance + amount);
         } else {

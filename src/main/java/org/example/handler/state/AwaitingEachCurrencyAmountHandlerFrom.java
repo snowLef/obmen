@@ -5,6 +5,7 @@ import org.example.infra.TelegramSender;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.User;
+import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
 import org.example.model.enums.Status;
 import org.example.service.DealService;
@@ -37,7 +38,8 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
 
         Integer index = user.getCurrentCurrencyIndex(); // индекс текущей валюты
         if (index >= currencies.size()) {
-            telegramSender.sendText(chatId, "Ошибка: индекс валюты вне диапазона.");
+            telegramSender.sendTextWithKeyboard(chatId, "Ошибка: индекс валюты вне диапазона.");
+//            menuService.sendSelectFullCurrency(chatId, "Выберите валюту");
             return;
         }
 
@@ -48,8 +50,6 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
             int amount = Math.round(Float.parseFloat(text));
 
             // Обновляем сумму по текущей валюте
-//            deal.getMoneyFrom().removeIf(ca -> ca.getCurrency() == currentCurrency);
-//            deal.getMoneyFrom().add(new CurrencyAmount(currentCurrency, amount));
             deal.getMoneyFrom().stream()
                     .filter(e -> e.getCurrency().equals(currentCurrency))
                     .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
@@ -61,12 +61,17 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
                 user.setCurrentCurrencyIndex(index);
                 userService.save(user);
 
-                telegramSender.sendText(chatId, "[Выдача] Введите сумму для %s:".formatted(currencies.get(index).getName()));
+                if (deal.getDealType() == DealType.PLUS_MINUS) {
+                    telegramSender.sendTextWithKeyboard(chatId, "[+/-] Введите сумму для %s:".formatted(currencies.get(index).getName()));
+                } else {
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + text + " " + currentCurrency.getName());
+                    telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для %s:".formatted(currencies.get(index).getName()));
+                }
             } else {
                 user.pushStatus(Status.AWAITING_APPROVE);
                 user.setCurrentCurrencyIndex(0);
                 userService.save(user);
-
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + text + " " + currentCurrency.getName());
                 menuService.sendTranspositionOrInvoiceApprove(chatId);
             }
 

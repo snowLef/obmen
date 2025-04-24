@@ -27,6 +27,9 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
 
         userService.saveBuyerName(chatId, text);
         userService.addMessageToDel(chatId, msgId);
+        userService.addMessageToEdit(chatId, msgId);
+
+        telegramSender.editMsg(chatId, user.getMessageToEdit(), "Имя: " + text);
 
         DealType dealType = user.getCurrentDeal().getDealType();
 
@@ -43,9 +46,9 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
                 userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
                 menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
             }
-            case CHANGE_BALANCE -> {
-                userService.saveUserStatus(chatId, Status.AWAITING_CHANGE_BALANCE_TYPE);
-                menuService.sendChangeBalanceMenu(chatId);
+            case PLUS_MINUS -> {
+                userService.saveUserStatus(chatId, Status.AWAITING_PLUS_MINUS_TYPE);
+                menuService.sendPlusMinusMenu(chatId);
             }
             case TRANSPOSITION, INVOICE -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_CITY_NAME);

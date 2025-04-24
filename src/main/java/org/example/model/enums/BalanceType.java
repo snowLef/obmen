@@ -4,7 +4,7 @@ import lombok.Getter;
 
 @Getter
 public enum BalanceType {
-    OWN("Собственный"),
+    OWN("Наш"),
     FOREIGN("Чужой"),
     DEBT("Долг");
 

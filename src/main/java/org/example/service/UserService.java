@@ -83,14 +83,23 @@ public class UserService {
     }
 
     public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type) {
-        userRepository.findByChatId(chatId).ifPresent(user -> {
-            Deal deal = new Deal();
-            deal.setMoneyFrom(List.of(from));
-            deal.setMoneyTo(List.of(to));
-            deal.setDealType(type);
-            user.setCurrentDeal(deal);
-            userRepository.save(user);
-        });
+        if (from == null && to == null) {
+            userRepository.findByChatId(chatId).ifPresent(user -> {
+                Deal deal = new Deal();
+                deal.setDealType(type);
+                user.setCurrentDeal(deal);
+                userRepository.save(user);
+            });
+        } else {
+            userRepository.findByChatId(chatId).ifPresent(user -> {
+                Deal deal = new Deal();
+                deal.setMoneyFrom(List.of(from));
+                deal.setMoneyTo(List.of(to));
+                deal.setDealType(type);
+                user.setCurrentDeal(deal);
+                userRepository.save(user);
+            });
+        }
     }
 
     @Transactional

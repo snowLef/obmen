@@ -5,8 +5,8 @@ import org.example.infra.TelegramSender;
 import org.example.model.*;
 import org.example.model.enums.BalanceType;
 import org.example.model.enums.ChangeBalanceType;
+import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Money;
-import org.example.model.enums.Status;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -35,11 +35,27 @@ public class ExchangeProcessor {
         switch (deal.getDealType()) {
             case BUY, CUSTOM -> processBuy(chatId, user, deal);
             case SELL -> processSell(chatId, user, deal);
-            case CHANGE_BALANCE -> processChangeBalance(chatId, user, deal);
+            case PLUS_MINUS -> processPlusMinusBalance(chatId, user, deal);
             case MOVING_BALANCE -> processMovingBalance(chatId, user, deal);
+            case CHANGE_BALANCE -> processChangeBalance(chatId, user, deal);
             case TRANSPOSITION, INVOICE -> processTranspositionOrInvoiceDeal(chatId, user, deal);
         }
+        menuService.sendBalance(chatId);
+    }
 
+    private void processChangeBalance(long chatId, User user, Deal deal) {
+        if (user.getChangeBalanceType() == ChangeBalanceType.ADD) {
+            BalanceType balanceTypeTo = BalanceType.OWN;
+            long toBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo);
+            currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo, toBalance + deal.getAmountTo());
+        } else if (user.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
+            BalanceType balanceTypeFrom = BalanceType.OWN;
+            long fromBalance = currencyService.getBalance(deal.getMoneyFrom().get(0).getCurrency(), balanceTypeFrom);
+            currencyService.updateBalance(deal.getMoneyFrom().get(0).getCurrency(), balanceTypeFrom, fromBalance - deal.getAmountFrom());
+        }
+        menuService.sendChangedBalanceMessage(chatId);
+        deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        userService.resetUserState(user);
     }
 
     private void processMovingBalance(long chatId, User user, Deal deal) {
@@ -48,10 +64,14 @@ public class ExchangeProcessor {
         long toBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo);
         long fromBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeFrom);
 
-        currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeFrom, fromBalance - deal.getAmountTo());
-        currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo, toBalance + deal.getAmountTo());
+        if (fromBalance < deal.getAmountTo()) {
+            telegramSender.sendText(chatId, "Недостаточно средств: *" + BalanceType.FOREIGN.getDisplayName().toUpperCase() + "*");
+        } else {
+            currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeFrom, fromBalance - deal.getAmountTo());
+            currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), balanceTypeTo, toBalance + deal.getAmountTo());
+            menuService.sendBalanceMovedMessage(chatId);
+        }
 
-        menuService.sendBalanceMovedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         userService.resetUserState(user);
     }
@@ -107,9 +127,10 @@ public class ExchangeProcessor {
     }
 
     private void sendInsufficientFundsMessage(long chatId, Money currency) {
-        Message botMsg = telegramSender.sendText(chatId, "Недостаточно средств: " + currency);
+        telegramSender.sendText(chatId, "Недостаточно средств: " + currency);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         userService.resetUserState(userService.getUser(chatId));
+        menuService.sendMainMenu(chatId);
     }
 
     private void processBuy(long chatId, User user, Deal deal) {
@@ -146,22 +167,38 @@ public class ExchangeProcessor {
         userService.resetUserState(user);
     }
 
-    private void processChangeBalance(long chatId, User user, Deal deal) {
+    private void processPlusMinusBalance(long chatId, User user, Deal deal) {
         long toForeignBalance = currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN);
-        ChangeBalanceType type = user.getChangeBalanceType();
+        PlusMinusType type = user.getPlusMinusType();
 
         switch (type) {
             case GET ->
                     currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN, toForeignBalance + deal.getAmountTo());
-            case GIVE ->
+            case GIVE -> {
+                if (deal.getMoneyTo().get(0).getAmount() < currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN)) {
                     currencyService.updateBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.FOREIGN, toForeignBalance - deal.getAmountTo());
+                } else {
+                    telegramSender.sendText(chatId, "Недостаточно средств: *" + BalanceType.FOREIGN.getDisplayName().toUpperCase() + "*");
+                    deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+                    userService.resetUserState(user);
+                    return;
+                }
+            }
             case LEND ->
-                    currencyService.moveBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.OWN, BalanceType.DEBT, deal.getAmountTo());
-            case DEBT_REPAYMENT ->
-                    currencyService.moveBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
+                    currencyService.moveBalance(chatId, deal.getMoneyTo().get(0).getCurrency(), BalanceType.OWN, BalanceType.DEBT, deal.getAmountTo());
+            case DEBT_REPAYMENT -> {
+                if (deal.getMoneyTo().get(0).getAmount() < currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT)) {
+                    currencyService.moveBalance(chatId, deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
+                } else {
+                    telegramSender.sendText(chatId, "Недостаточно средств: *" + BalanceType.DEBT.getDisplayName().toUpperCase() + "*");
+                    deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+                    userService.resetUserState(user);
+                    return;
+                }
+            }
         }
 
-        menuService.sendBalanceChangedMessage(chatId);
+        menuService.sendBalancePlusMinusMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
         userService.resetUserState(user);
     }

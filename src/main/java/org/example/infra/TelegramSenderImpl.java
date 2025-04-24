@@ -55,7 +55,8 @@ public class TelegramSenderImpl implements TelegramSender {
 
     @Override
     public Message sendText(Long chatId, String text) {
-        SendMessage message = new SendMessage(chatId.toString(), text);
+        SendMessage message = new SendMessage(chatId.toString(), messageUtils.escapeMarkdown(text));
+        message.setParseMode("MarkdownV2");
         Message returnMsg;
         try {
             returnMsg = obmenBot.execute(message);
@@ -84,7 +85,7 @@ public class TelegramSenderImpl implements TelegramSender {
         message.setChatId(chatId);
         message.setMessageId(messageToEdit);
         message.setText(s);
-        message.setReplyMarkup(menuService.createCurrencyKeyboard());
+        message.setReplyMarkup(menuService.addBackCancelButtons(menuService.createFullCurrencyKeyboard()));
         try {
             obmenBot.execute(message);
         } catch (TelegramApiException e) {
@@ -104,6 +105,7 @@ public class TelegramSenderImpl implements TelegramSender {
             throw new RuntimeException(e);
         }
         userService.addMessageToDel(chatId, returnMsg.getMessageId());
+        userService.addMessageToEdit(chatId, returnMsg.getMessageId());
     }
 
     @Override

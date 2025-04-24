@@ -26,6 +26,9 @@ public class AwaitingCityNameHandler implements UserStateHandler {
 
         userService.saveCityName(chatId, text);
         userService.addMessageToDel(chatId, msgId);
+        userService.addMessageToEdit(chatId, msgId);
+
+        telegramSender.editMsg(chatId, user.getMessageToEdit(), "Откуда-куда: " + text);
 
         DealType dealType = user.getCurrentDeal().getDealType();
 

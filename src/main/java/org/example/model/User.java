@@ -63,6 +63,10 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Setter
+    private PlusMinusType plusMinusType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
     private ChangeBalanceType changeBalanceType;
 
     @Enumerated(EnumType.STRING)
@@ -94,6 +98,7 @@ public class User {
         }
         messages.add(messageId);
     }
+
 }
 
 

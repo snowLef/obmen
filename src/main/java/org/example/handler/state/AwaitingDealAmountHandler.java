@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
 import org.example.model.Deal;
 import org.example.model.User;
+import org.example.model.enums.ChangeBalanceType;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Status;
 import org.example.service.UserService;
@@ -24,6 +25,8 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
         long chatId = message.getChatId();
         int msgId = message.getMessageId();
         String text = message.getText();
+
+        telegramSender.editMsg(chatId, user.getMessageToEdit(), "Сумма: " + text);
 
         try {
             long amount = Math.round(Long.parseLong(text));
@@ -50,7 +53,7 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
                     userService.save(user);
                     menuService.sendSelectAmountType(chatId);
                 }
-                case CHANGE_BALANCE -> {
+                case PLUS_MINUS -> {
                     deal.getMoneyTo().get(0).setAmount(amount);
                     user.pushStatus(Status.AWAITING_APPROVE);
                     userService.save(user);
@@ -63,13 +66,22 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
                     userService.save(user);
                     menuService.sendApproveMenu(chatId);
                 }
+                case CHANGE_BALANCE -> {
+                    if (user.getChangeBalanceType() == ChangeBalanceType.ADD) {
+                        deal.getMoneyTo().get(0).setAmount(amount);
+                    } else if (user.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
+                        deal.getMoneyFrom().get(0).setAmount(amount);
+                    }
+                    user.pushStatus(Status.AWAITING_COMMENT);
+                    userService.save(user);
+                    telegramSender.sendTextWithKeyboard(chatId, "Введите комментарий: ");
+                }
             }
 
             userService.addMessageToDel(chatId, msgId);
 
         } catch (NumberFormatException e) {
-            Message botMsg = telegramSender.sendText(chatId, "Неверный формат суммы.");
-            userService.addMessageToDel(chatId, botMsg.getMessageId());
+            telegramSender.sendTextWithKeyboard(chatId, "Неверный формат суммы.");
         }
     }
 

@@ -62,6 +62,8 @@ public class MessageUtils {
                 .replace("(", "\\(")
                 .replace(")", "\\)")
                 .replace("!", "\\!")
+//                .replace(">", "\\>")
+                .replace("=", "\\=")
                 .replace("+", "\\+");
     }
 }

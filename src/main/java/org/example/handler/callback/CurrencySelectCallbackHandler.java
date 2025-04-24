@@ -5,6 +5,7 @@ import org.example.constants.BotCommands;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.User;
+import org.example.model.enums.ChangeBalanceType;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
 import org.example.model.enums.Status;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -49,7 +51,9 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
 
         if (deal.getDealType() == DealType.CUSTOM) {
             handleCustomDeal(query, user, deal, chatId);
-        } else if (deal.getDealType() == DealType.CHANGE_BALANCE || deal.getDealType() == DealType.MOVING_BALANCE) {
+        } else if (deal.getDealType() == DealType.MOVING_BALANCE) {
+            handleChangeBalance(data, user, deal, chatId);
+        } else if (deal.getDealType() == DealType.CHANGE_BALANCE) {
             handleChangeBalance(data, user, deal, chatId);
         } else {
             handleMultiSelect(data, user, deal, chatId);
@@ -62,30 +66,46 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         switch (user.getStatus()) {
             case AWAITING_FIRST_CURRENCY -> {
                 deal.setMoneyTo(List.of(new CurrencyAmount(selected, 0)));
-                if (deal.getDealType() == DealType.CHANGE_BALANCE) {
+                if (deal.getDealType() == DealType.PLUS_MINUS) {
                     user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
+                    dealService.save(deal);
+                    userService.save(user);
                     telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
                 } else if (deal.getDealType() == DealType.MOVING_BALANCE) {
                     user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
-                    telegramSender.sendText(chatId, BotCommands.ASK_FOR_AMOUNT);
                     deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
+                    dealService.save(deal);
+                    userService.save(user);
+                    telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
+                } else if (deal.getDealType() == DealType.CHANGE_BALANCE) {
+                    user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
+                    if (user.getChangeBalanceType() == ChangeBalanceType.ADD) {
+                        deal.setMoneyTo(List.of(new CurrencyAmount(selected, 0)));
+                    } else if (user.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
+                        deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
+                    }
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выбрано: *" + selected.getName() + "*");
+                    user.setCurrentDeal(deal);
+                    userService.save(user);
+                    telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
                 } else {
                     Message message1 = menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
-                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получение: *" + selected.getNameForBalance() + "*");
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получение: *" + selected.getName() + "*");
                     user.setMessageToEdit(message1.getMessageId());
                     user.pushStatus(Status.AWAITING_SECOND_CURRENCY);
+                    dealService.save(deal);
+                    userService.save(user);
                 }
             }
             case AWAITING_SECOND_CURRENCY -> {
                 deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
-                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдача: *" + messageUtils.escapeMarkdown(selected.getNameForBalance()) + "*");
-                telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдача: *" + selected.getNameForBalance() + "*");
                 user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
+                dealService.save(deal);
+                userService.save(user);
+                telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
             }
         }
-
-        dealService.save(deal);
-        userService.save(user);
     }
 
     private void handleChangeBalance(String data, User user, Deal deal, Long chatId) {
@@ -94,11 +114,11 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
         dealService.save(deal);
         userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
+        telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выбрано: *" + selected.getName() + "*");
         telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
     }
 
     private void handleMultiSelect(String data, User user, Deal deal, Long chatId) {
-        // Пользователь закончил выбор
         if (data.equals("done")) {
             handleDone(user, deal, chatId);
             return;
@@ -110,7 +130,11 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         toggleCurrencySelection(deal, selected, isSelectingTo);
 
         List<Money> selectedList = isSelectingTo ? deal.getMoneyToList() : deal.getMoneyFromList();
-        String selectedNames = selectedList.stream().map(Money::getName).toList().toString();
+        String selectedNames = selectedList.stream()
+                .filter(Objects::nonNull)
+                .map(Money::getName)
+                .toList()
+                .toString();
         telegramSender.editMsgWithKeyboard(chatId, user.getMessageToEdit(), "Выбрано: " + selectedNames);
         user.setCurrentDeal(deal);
         userService.save(user);
@@ -133,23 +157,57 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
     }
 
     private void handleDone(User user, Deal deal, Long chatId) {
-        // Логика перехода на следующий шаг
-        if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
+        if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY
+                && !List.of(DealType.PLUS_MINUS, DealType.TRANSPOSITION, DealType.INVOICE).contains(deal.getDealType())) {
             userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
-            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение] Выбрано: " + userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
-                    .map(CurrencyAmount::getCurrency)
-                    .map(Money::getName)
-                    .toList());
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение]: " +
+                    userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
+                            .map(CurrencyAmount::getCurrency)
+                            .filter(Objects::nonNull)
+                            .map(Money::getName)
+                            .toList());
             menuService.sendSelectMultiplyCurrency(chatId, "Выберите несколько валют получения:");
-        } else {
+        } else if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY &&
+                List.of(DealType.TRANSPOSITION, DealType.INVOICE).contains(deal.getDealType())) {
             userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение]: " +
+                    userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
+                            .map(CurrencyAmount::getCurrency)
+                            .filter(Objects::nonNull)
+                            .map(Money::getName)
+                            .toList());
+            telegramSender.sendTextWithKeyboard(chatId, "[Получение] Введите сумму для " + deal.getMoneyToList().get(0).getName() + ":");
+//        } else if (deal.getDealType() == DealType.TRANSPOSITION) {
+//            userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
+//            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[+/-] Выбрано: " +
+//                    user.getCurrentDeal().getMoneyTo().stream()
+//                            .map(CurrencyAmount::getCurrency)
+//                            .filter(Objects::nonNull)
+//                            .map(Money::getName)
+//                            .toList());
+//            Message msg = telegramSender.sendText(chatId, "[+/-] Введите сумму для " + deal.getMoneyToList().get(0).getName() + ":");
+//            userService.addMessageToDel(chatId, msg.getMessageId());
+        } else {
             List<Money> moneyToList = deal.getMoneyToList();
-            if (!moneyToList.isEmpty()) {
-                telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Выдача] Выбрано: " + userService.getUser(chatId).getCurrentDeal().getMoneyFrom().stream()
-                        .map(CurrencyAmount::getCurrency)
-                        .map(Money::getName)
-                        .toList());
-                telegramSender.sendText(chatId, "[Получение] Введите сумму для " + moneyToList.get(0).getName() + ":");
+            List<Money> moneyFromList = deal.getMoneyFromList();
+            if (deal.getDealType() == DealType.TRANSPOSITION || deal.getDealType() == DealType.INVOICE) {
+                userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Выдача]: " +
+                        user.getCurrentDeal().getMoneyFrom().stream()
+                                .map(CurrencyAmount::getCurrency)
+                                .filter(Objects::nonNull)
+                                .map(Money::getName)
+                                .toList());
+                telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для " + moneyFromList.get(0).getName() + ":");
+            } else if (!moneyToList.isEmpty()) {
+                userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Выдача]: " +
+                        user.getCurrentDeal().getMoneyFrom().stream()
+                                .map(CurrencyAmount::getCurrency)
+                                .filter(Objects::nonNull)
+                                .map(Money::getName)
+                                .toList());
+                telegramSender.sendTextWithKeyboard(chatId, "[Получение] Введите сумму для " + moneyToList.get(0).getName() + ":");
             } else {
                 telegramSender.sendText(chatId, "Ошибка: не выбрано ни одной валюты для выдачи.");
             }

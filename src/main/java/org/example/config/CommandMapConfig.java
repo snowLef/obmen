@@ -8,10 +8,7 @@ import org.example.infra.TelegramSender;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.User;
-import org.example.model.enums.ChangeBalanceType;
-import org.example.model.enums.DealType;
-import org.example.model.enums.Money;
-import org.example.model.enums.Status;
+import org.example.model.enums.*;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,22 +62,43 @@ public class CommandMapConfig {
         map.put("Меню", ctx -> menuService.sendMainMenu(ctx.chatId()));
         map.put("/start", ctx -> menuService.sendMainMenu(ctx.chatId()));
 
-        map.put("Сложный обмен", this::handleCustomChange);
+        map.put("Валютный обмен", this::handleCustomChange);
         map.put("Перестановка", ctx -> handleTranspositionOrInvoice(ctx, TRANSPOSITION));
         map.put("Invoice", ctx -> handleTranspositionOrInvoice(ctx, INVOICE));
 
         map.put("+/-", this::handlePlusMinus);
         map.put("Перемещение", this::movingTheBalance);
-        map.put("Изменение", this::movingTheBalance);
+        map.put("Изменение", this::changeTheBalance);
         map.put("Баланс", ctx -> menuService.sendBalance(ctx.chatId()));
 
-        map.put("Принимаем +", ctx -> handleChangeBalance(ctx, ChangeBalanceType.GET));
-        map.put("Отдаем +", ctx -> handleChangeBalance(ctx, ChangeBalanceType.GIVE));
-        map.put("Даем в долг", ctx -> handleChangeBalance(ctx, ChangeBalanceType.LEND));
-        map.put("Возврат долга", ctx -> handleChangeBalance(ctx, ChangeBalanceType.DEBT_REPAYMENT));
+        map.put("Принимаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GET));
+        map.put("Отдаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GIVE));
+        map.put("Даем в долг", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.LEND));
+        map.put("Возврат долга", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.DEBT_REPAYMENT));
 
+//        map.put("Пополнение", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.ADD));
+//        map.put("Вывод", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.WITHDRAWAL));
 
         return map;
+    }
+
+//    private void handleAddOrWithdrawalBalance(CommandContext ctx, ChangeBalanceType type) {
+//        long chatId = ctx.chatId();
+//        User user = userService.getOrCreate(chatId);
+//        user.setChangeBalanceType(type);
+//        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
+//        userService.save(user);
+//        menuService.sendSelectFullCurrency(chatId, "Выберите валюту:");
+//    }
+
+    private void changeTheBalance(CommandContext ctx) {
+        User user = userService.getUser(ctx.chatId());
+        user.pushStatus(Status.AWAITING_CHANGE_BALANCE_TYPE);
+        Deal deal = new Deal();
+        deal.setDealType(CHANGE_BALANCE);
+        user.setCurrentDeal(deal);
+        userService.save(user);
+        menuService.sendChangeBalanceMenu(ctx.chatId());
     }
 
     private void movingTheBalance(CommandContext ctx) {
@@ -104,10 +122,19 @@ public class CommandMapConfig {
     }
 
     private void handlePlusMinus(CommandContext ctx) {
-        userService.addMessageToDel(ctx.chatId(), ctx.msgId());
-        userService.startDeal(ctx.chatId(), new CurrencyAmount(null, 0), new CurrencyAmount(null, 0), CHANGE_BALANCE);
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
+        userService.addMessageToDel(ctx.chatId(), ctx.msgId());
+        userService.startDeal(ctx.chatId(), null, null, PLUS_MINUS);
         telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
+    }
+
+    private void handlePlusMinusBalance(CommandContext ctx, PlusMinusType type) {
+        long chatId = ctx.chatId();
+        User user = userService.getOrCreate(chatId);
+        user.setPlusMinusType(type);
+        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
+        userService.save(user);
+        menuService.sendSelectCurrency(chatId, "Выберите валюту:");
     }
 
     private void handleCustomChange(CommandContext ctx) {
@@ -118,15 +145,6 @@ public class CommandMapConfig {
 
         telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
-    }
-
-    private void handleChangeBalance(CommandContext ctx, ChangeBalanceType type) {
-        long chatId = ctx.chatId();
-        User user = userService.getOrCreate(chatId);
-        user.setChangeBalanceType(type);
-        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
-        userService.save(user);
-        menuService.sendSelectCurrency(chatId, "Выберите валюту:");
     }
 
     private void start(CommandContext ctx, Money from, Money to, DealType dealType) {

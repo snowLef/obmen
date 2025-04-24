@@ -8,10 +8,10 @@ import lombok.Getter;
 public enum DealType {
     BUY ("Покупка"),
     SELL ("Продажа"),
-    CUSTOM ("Сложный обмен"),
-    CHANGE_BALANCE ("Изменение баланса"),
+    CUSTOM ("Валютный обмен"),
+    PLUS_MINUS("+/-"),
     MOVING_BALANCE ("Перемещение"),
-    //CHANGE_BALANCE ("Изменение"),
+    CHANGE_BALANCE ("Изменение"),
     TRANSPOSITION ("Перестановка"),
     INVOICE ("Invoice");
 
