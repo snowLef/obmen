@@ -8,9 +8,11 @@ import org.example.model.User;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
 import org.example.model.enums.Status;
+import org.example.service.CurrencyService;
 import org.example.service.DealService;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
+import org.example.util.MessageUtils;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -24,6 +26,7 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
     private final UserService userService;
     private final DealService dealService;
     private final MenuService menuService;
+    private final MessageUtils messageUtils;
 
     @Override
     public void handle(Message message, User user) {
@@ -48,6 +51,7 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
         // Парсим введённую сумму
         try {
             int amount = Math.round(Float.parseFloat(text));
+            String formattedText = messageUtils.formatWithSpacesAndDecimals(amount);
 
             // Обновляем сумму по текущей валюте
             deal.getMoneyFrom().stream()
@@ -62,17 +66,22 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
                 userService.save(user);
 
                 if (deal.getDealType() == DealType.PLUS_MINUS) {
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[+/-] Введите сумму для %s:".formatted(currencies.get(index).getName()));
                 } else {
-                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + text + " " + currentCurrency.getName());
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для %s:".formatted(currencies.get(index).getName()));
                 }
             } else {
                 user.pushStatus(Status.AWAITING_APPROVE);
                 user.setCurrentCurrencyIndex(0);
                 userService.save(user);
-                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + text + " " + currentCurrency.getName());
-                menuService.sendTranspositionOrInvoiceApprove(chatId);
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + formattedText + " " + currentCurrency.getName());
+                if (deal.getDealType() == DealType.TRANSPOSITION || deal.getDealType() == DealType.INVOICE) {
+                    menuService.sendTranspositionOrInvoiceApprove(chatId);
+                } else {
+                    menuService.sendApproveMenu(chatId);
+                }
             }
 
             dealService.save(deal);

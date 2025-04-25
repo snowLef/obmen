@@ -1,12 +1,14 @@
 package org.example.util;
 
 import org.example.infra.TelegramSender;
+import org.example.model.CurrencyAmount;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class MessageUtils {
@@ -16,6 +18,14 @@ public class MessageUtils {
     @Autowired
     public void setTelegramSender(TelegramSender telegramSender) {
         this.telegramSender = telegramSender;
+    }
+
+    public String formatCurrencyAmounts(List<CurrencyAmount> amounts) {
+        return amounts.stream()
+                .map(amt -> String.format("*%s %s*",
+                        formatWithSpacesAndDecimals(amt.getAmount()),
+                        amt.getCurrency().getName()))
+                .collect(Collectors.joining(" + "));
     }
 
     public String formatWithSpacesAndDecimals(long input) {

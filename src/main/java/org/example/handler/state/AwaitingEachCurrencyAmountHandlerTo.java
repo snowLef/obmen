@@ -62,6 +62,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
             if (index < currencies.size()) {
                 user.setCurrentCurrencyIndex(index);
                 userService.save(user);
+
                 if (deal.getDealType() == DealType.PLUS_MINUS) {
                     telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[+/-] Введите сумму для %s:".formatted(currencies.get(index).getName()));
@@ -69,6 +70,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                     telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для %s:".formatted(currencies.get(index).getName()));
                 }
+
             } else if (deal.getDealType() == DealType.PLUS_MINUS) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                 user.pushStatus(Status.AWAITING_APPROVE);

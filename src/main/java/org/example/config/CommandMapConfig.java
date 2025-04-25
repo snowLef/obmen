@@ -69,7 +69,10 @@ public class CommandMapConfig {
         map.put("+/-", this::handlePlusMinus);
         map.put("Перемещение", this::movingTheBalance);
         map.put("Изменение", this::changeTheBalance);
-        map.put("Баланс", ctx -> menuService.sendBalance(ctx.chatId()));
+        map.put("Баланс", ctx -> {
+            menuService.sendBalance(ctx.chatId());
+            menuService.sendMainMenu(ctx.chatId());
+        });
 
         map.put("Принимаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GET));
         map.put("Отдаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GIVE));
