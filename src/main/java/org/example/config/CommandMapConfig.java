@@ -49,10 +49,10 @@ public class CommandMapConfig {
         Map<String, CommandHandler> map = new LinkedHashMap<>();
 
         // Курсы
-        map.put("Купить USD", ctx -> start(ctx, RUB, USD, BUY));
-        map.put("Продать USD", ctx -> start(ctx, USD, RUB, SELL));
-        map.put("Купить EUR", ctx -> start(ctx, RUB, EUR, BUY));
-        map.put("Продать EUR", ctx -> start(ctx, EUR, RUB, SELL));
+        map.put("Купить USD $", ctx -> start(ctx, RUB, USD, BUY));
+        map.put("Продать USD $", ctx -> start(ctx, USD, RUB, SELL));
+        map.put("Купить EUR €", ctx -> start(ctx, RUB, EUR, BUY));
+        map.put("Продать EUR €", ctx -> start(ctx, EUR, RUB, SELL));
         map.put("Купить USD (Б)", ctx -> start(ctx, RUB, USDW, BUY));
         map.put("Продать USD (Б)", ctx -> start(ctx, USDW, RUB, SELL));
         map.put("Купить USDT", ctx -> start(ctx, RUB, USDT, BUY));
@@ -122,10 +122,12 @@ public class CommandMapConfig {
     }
 
     private void handlePlusMinus(CommandContext ctx) {
-        userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
+//        userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
+        userService.saveUserStatus(ctx.chatId(), Status.AWAITING_PLUS_MINUS_TYPE);
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
         userService.startDeal(ctx.chatId(), null, null, PLUS_MINUS);
-        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
+        menuService.sendPlusMinusMenu(ctx.chatId());
+//        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
     }
 
     private void handlePlusMinusBalance(CommandContext ctx, PlusMinusType type) {

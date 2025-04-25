@@ -90,7 +90,7 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
                     telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
                 } else {
                     Message message1 = menuService.sendSelectCurrency(chatId, "Выберите валюту выдачи");
-                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получение: *" + selected.getName() + "*");
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: *" + selected.getName() + "*");
                     user.setMessageToEdit(message1.getMessageId());
                     user.pushStatus(Status.AWAITING_SECOND_CURRENCY);
                     dealService.save(deal);
@@ -160,7 +160,7 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY
                 && !List.of(DealType.PLUS_MINUS, DealType.TRANSPOSITION, DealType.INVOICE).contains(deal.getDealType())) {
             userService.saveUserStatus(chatId, Status.AWAITING_SECOND_CURRENCY);
-            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение]: " +
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получено]: " +
                     userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
                             .map(CurrencyAmount::getCurrency)
                             .filter(Objects::nonNull)
@@ -170,13 +170,13 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         } else if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY &&
                 List.of(DealType.TRANSPOSITION, DealType.INVOICE).contains(deal.getDealType())) {
             userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
-            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получение]: " +
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получено]: " +
                     userService.getUser(chatId).getCurrentDeal().getMoneyTo().stream()
                             .map(CurrencyAmount::getCurrency)
                             .filter(Objects::nonNull)
                             .map(Money::getName)
                             .toList());
-            telegramSender.sendTextWithKeyboard(chatId, "[Получение] Введите сумму для " + deal.getMoneyToList().get(0).getName() + ":");
+            telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для " + deal.getMoneyToList().get(0).getName() + ":");
 //        } else if (deal.getDealType() == DealType.TRANSPOSITION) {
 //            userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
 //            telegramSender.editMsg(chatId, user.getMessageToEdit(), "[+/-] Выбрано: " +
@@ -201,13 +201,13 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
                 telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для " + moneyFromList.get(0).getName() + ":");
             } else if (!moneyToList.isEmpty()) {
                 userService.saveUserStatus(chatId, Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
-                telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Выдача]: " +
-                        user.getCurrentDeal().getMoneyFrom().stream()
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "[Получено]: " +
+                        user.getCurrentDeal().getMoneyTo().stream()
                                 .map(CurrencyAmount::getCurrency)
                                 .filter(Objects::nonNull)
                                 .map(Money::getName)
                                 .toList());
-                telegramSender.sendTextWithKeyboard(chatId, "[Получение] Введите сумму для " + moneyToList.get(0).getName() + ":");
+                telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для " + moneyToList.get(0).getName() + ":");
             } else {
                 telegramSender.sendText(chatId, "Ошибка: не выбрано ни одной валюты для выдачи.");
             }

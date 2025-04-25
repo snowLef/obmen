@@ -36,19 +36,21 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
         switch (dealType) {
             case BUY -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getNameForBalance()));
+                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName()));
             }
             case SELL -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_DEAL_AMOUNT);
-                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getNameForBalance()));
+                telegramSender.sendTextWithKeyboard(chatId, "Введите сумму в *%s:*".formatted(user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName()));
             }
             case CUSTOM -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
                 menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
             }
             case PLUS_MINUS -> {
-                userService.saveUserStatus(chatId, Status.AWAITING_PLUS_MINUS_TYPE);
-                menuService.sendPlusMinusMenu(chatId);
+//                userService.saveUserStatus(chatId, Status.AWAITING_PLUS_MINUS_TYPE);
+//                menuService.sendPlusMinusMenu(chatId);
+                userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
+                menuService.sendSelectCurrency(chatId, "Выберите валюту +/-");
             }
             case TRANSPOSITION, INVOICE -> {
                 userService.saveUserStatus(chatId, Status.AWAITING_CITY_NAME);

@@ -1,5 +1,7 @@
 package org.example.handler.state;
 
+import org.example.constants.BotCommands;
+import org.example.infra.TelegramSender;
 import org.example.model.User;
 import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Status;
@@ -15,11 +17,13 @@ public class PlusMinusTypeHandler implements UserStateHandler {
     private final UserService userService;
     private final MenuService menuService;
     private final UserRepository userRepository;
+    private final TelegramSender telegramSender;
 
-    public PlusMinusTypeHandler(UserService userService, MenuService menuService, UserRepository userRepository) {
+    public PlusMinusTypeHandler(UserService userService, MenuService menuService, UserRepository userRepository, TelegramSender telegramSender) {
         this.userService = userService;
         this.menuService = menuService;
         this.userRepository = userRepository;
+        this.telegramSender = telegramSender;
     }
 
     @Override
@@ -50,8 +54,11 @@ public class PlusMinusTypeHandler implements UserStateHandler {
 
         user.setPlusMinusType(balanceType);
         userRepository.save(user);
-        userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
-        menuService.sendSelectCurrency(chatId, "Выберите валюту +/-");
+        userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
+        telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_NAME);
+
+//        userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
+//        menuService.sendSelectCurrency(chatId, "Выберите валюту +/-");
         userService.addMessageToDel(chatId, msgId);
     }
 

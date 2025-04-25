@@ -11,6 +11,7 @@ import org.example.model.enums.Status;
 import org.example.service.DealService;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
+import org.example.util.MessageUtils;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -24,6 +25,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
     private final UserService userService;
     private final DealService dealService;
     private final MenuService menuService;
+    private final MessageUtils messageUtils;
 
     @Override
     public void handle(Message message, User user) {
@@ -47,6 +49,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
 
         try {
             int amount = Math.round(Float.parseFloat(text));
+            String formattedText = messageUtils.formatWithSpacesAndDecimals(amount);
 
             // Обновляем сумму по текущей валюте
             deal.getMoneyTo().stream()
@@ -60,12 +63,14 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                 user.setCurrentCurrencyIndex(index);
                 userService.save(user);
                 if (deal.getDealType() == DealType.PLUS_MINUS) {
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[+/-] Введите сумму для %s:".formatted(currencies.get(index).getName()));
                 } else {
-                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + text + " " + currentCurrency.getName());
+                    telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                     telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для %s:".formatted(currencies.get(index).getName()));
                 }
             } else if (deal.getDealType() == DealType.PLUS_MINUS) {
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                 user.pushStatus(Status.AWAITING_APPROVE);
                 user.setCurrentCurrencyIndex(0);
                 userService.save(user);
@@ -74,7 +79,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                 user.pushStatus(Status.AWAITING_SECOND_CURRENCY);
                 user.setCurrentCurrencyIndex(0);
                 userService.save(user);
-                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + text + " " + currentCurrency.getName());
+                telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                 Message message1 = menuService.sendSelectFullCurrency(chatId, "Выберите валюту выдачи");
                 user.setMessageToEdit(message1.getMessageId());
             } else {

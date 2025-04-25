@@ -9,6 +9,7 @@ import org.example.model.enums.DealType;
 import org.example.model.enums.Status;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
+import org.example.util.MessageUtils;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
@@ -19,20 +20,29 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
     private final UserService userService;
     private final TelegramSender telegramSender;
     private final MenuService menuService;
+    private final MessageUtils messageUtils;
 
     @Override
     public void handle(Message message, User user) {
         long chatId = message.getChatId();
         int msgId = message.getMessageId();
         String text = message.getText();
+        Deal deal = user.getCurrentDeal();
+        DealType dealType = user.getCurrentDeal().getDealType();
+        String money = "";
 
-        telegramSender.editMsg(chatId, user.getMessageToEdit(), "Сумма: " + text);
+        if (dealType == DealType.BUY) {
+            money = deal.getMoneyTo().get(0).getCurrency().getName();
+        } else if (dealType == DealType.SELL) {
+            money = deal.getMoneyFrom().get(0).getCurrency().getName();
+
+        }
+
 
         try {
             long amount = Math.round(Long.parseLong(text));
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Сумма: " + messageUtils.formatWithSpacesAndDecimals(amount) + " " + money);
 
-            DealType dealType = user.getCurrentDeal().getDealType();
-            Deal deal = user.getCurrentDeal();
 
             switch (dealType) {
                 case BUY -> {
