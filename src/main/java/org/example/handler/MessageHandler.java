@@ -3,6 +3,7 @@ package org.example.handler;
 import lombok.RequiredArgsConstructor;
 import org.example.handler.state.UserStateHandler;
 import org.example.model.*;
+import org.example.service.ExchangeProcessor;
 import org.example.service.UserService;
 import org.example.model.enums.Status;
 import org.springframework.stereotype.Component;
@@ -16,9 +17,14 @@ public class MessageHandler {
 
     private final UserService userService;
     private final Map<Status, UserStateHandler> stateHandlers;
+    private final ExchangeProcessor exchangeProcessor;
 
     public void process(Message message) {
         if (message == null || message.getText() == null) return;
+
+        if (message.getText().equals("/cancel")) {
+            exchangeProcessor.cancel(message.getChatId());
+        }
 
         long chatId = message.getChatId();
         User user = userService.getOrCreate(chatId);

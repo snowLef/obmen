@@ -9,6 +9,7 @@ import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.*;
+import org.example.service.ExchangeProcessor;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ public class CommandMapConfig {
     private UserService userService;
     private TelegramSender telegramSender;
     private MenuService menuService;
+    private ExchangeProcessor exchangeProcessor;
 
     @Autowired
     public void setUserService(UserService userService) {
@@ -44,8 +46,13 @@ public class CommandMapConfig {
         this.telegramSender = telegramSender;
     }
 
+    @Autowired
+    public void setExchangeProcessor(ExchangeProcessor exchangeProcessor) {
+        this.exchangeProcessor = exchangeProcessor;
+    }
+
     @Bean
-    public Map<String, CommandHandler> commandMap() {
+    public Map<String, CommandHandler> commandMap(ExchangeProcessor exchangeProcessor) {
         Map<String, CommandHandler> map = new LinkedHashMap<>();
 
         // Курсы
@@ -79,20 +86,17 @@ public class CommandMapConfig {
         map.put("Даем в долг", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.LEND));
         map.put("Возврат долга", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.DEBT_REPAYMENT));
 
+        map.put("/cancel", this::cancel);
+
 //        map.put("Пополнение", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.ADD));
 //        map.put("Вывод", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.WITHDRAWAL));
 
         return map;
     }
 
-//    private void handleAddOrWithdrawalBalance(CommandContext ctx, ChangeBalanceType type) {
-//        long chatId = ctx.chatId();
-//        User user = userService.getOrCreate(chatId);
-//        user.setChangeBalanceType(type);
-//        user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
-//        userService.save(user);
-//        menuService.sendSelectFullCurrency(chatId, "Выберите валюту:");
-//    }
+    private void cancel(CommandContext ctx) {
+        exchangeProcessor.cancel(ctx.chatId());
+    }
 
     private void changeTheBalance(CommandContext ctx) {
         User user = userService.getUser(ctx.chatId());
