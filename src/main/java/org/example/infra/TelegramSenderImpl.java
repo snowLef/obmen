@@ -112,8 +112,9 @@ public class TelegramSenderImpl implements TelegramSender {
     public void deleteMessage(Long chatId, Integer messageToDelete) {
         try {
             obmenBot.deleteMessage(new DeleteMessage(chatId.toString(), messageToDelete));
+            System.out.println("Сообщение удалено " + messageToDelete);
         } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
+            System.out.println("Ошибка удаления сообщения " + messageToDelete);
         }
     }
 

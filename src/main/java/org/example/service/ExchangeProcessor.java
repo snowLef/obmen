@@ -205,23 +205,9 @@ public class ExchangeProcessor {
                     return;
                 }
             }
-            case LEND -> {
-//                currencyService.moveBalance(chatId, deal.getMoneyTo().get(0).getCurrency(), BalanceType.OWN, BalanceType.DEBT, deal.getAmountTo());
-
-                deal.getMoneyFromList()
-                        .forEach(e -> {
-                            currencyService.moveBalance(chatId, e, BalanceType.OWN, BalanceType.DEBT, getCurrentAmountFrom(deal, e));
-                        });
-            }
+            case LEND -> deal.getMoneyFromList()
+                    .forEach(e -> currencyService.moveBalance(chatId, e, BalanceType.OWN, BalanceType.DEBT, getCurrentAmountFrom(deal, e)));
             case DEBT_REPAYMENT -> {
-//                if (deal.getMoneyTo().get(0).getAmount() <= currencyService.getBalance(deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT)) {
-//                    currencyService.moveBalance(chatId, deal.getMoneyTo().get(0).getCurrency(), BalanceType.DEBT, BalanceType.OWN, deal.getAmountTo());
-//                } else {
-//                    telegramSender.sendText(chatId, "Недостаточно средств: *" + BalanceType.DEBT.getDisplayName().toUpperCase() + "*");
-//                    deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//                    userService.resetUserState(user);
-//                    return;
-//                }
                 boolean hasSufficientBalance = deal.getMoneyTo().stream()
                         .allMatch(amount ->
                                 amount.getAmount() <= currencyService.getBalance(
@@ -231,9 +217,7 @@ public class ExchangeProcessor {
                         );
                 if (hasSufficientBalance) {
                     deal.getMoneyToList()
-                            .forEach(e -> {
-                    currencyService.moveBalance(chatId, e, BalanceType.DEBT, BalanceType.OWN, getCurrentAmountTo(deal, e));
-                            });
+                            .forEach(e -> currencyService.moveBalance(chatId, e, BalanceType.DEBT, BalanceType.OWN, getCurrentAmountTo(deal, e)));
                 } else {
                     telegramSender.sendText(chatId, "Недостаточно средств: *" + BalanceType.DEBT.getDisplayName().toUpperCase() + "*");
                     deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));

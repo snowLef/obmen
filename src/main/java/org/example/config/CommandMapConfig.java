@@ -64,6 +64,8 @@ public class CommandMapConfig {
         map.put("Продать USD (Б)", ctx -> start(ctx, USDW, RUB, SELL));
         map.put("Купить USDT", ctx -> start(ctx, RUB, USDT, BUY));
         map.put("Продать USDT", ctx -> start(ctx, USDT, RUB, SELL));
+        map.put("Купить Y.E.", ctx -> start(ctx, RUB, YE, BUY));
+        map.put("Продать Y.E.", ctx -> start(ctx, YE, RUB, SELL));
 
         // Сервисные
         map.put("Меню", ctx -> menuService.sendMainMenu(ctx.chatId()));

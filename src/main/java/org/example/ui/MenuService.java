@@ -160,11 +160,6 @@ public class MenuService {
     public void sendMainMenu(long chatId) {
         List<KeyboardRow> rows = new ArrayList<>();
 
-        KeyboardRow row = new KeyboardRow();
-        row.add("Купить USD $");
-        row.add("Продать USD $");
-        rows.add(row);
-
         KeyboardRow row1 = new KeyboardRow();
         row1.add("Купить USD $");
         row1.add("Продать USD $");
@@ -184,6 +179,11 @@ public class MenuService {
         row3.add("Купить USD (Б)");
         row3.add("Продать USD (Б)");
         rows.add(row3);
+
+        KeyboardRow row = new KeyboardRow();
+        row.add("Купить Y.E.");
+        row.add("Продать Y.E.");
+        rows.add(row);
 
         KeyboardRow customRow = new KeyboardRow();
         customRow.add("Валютный обмен");
@@ -367,13 +367,15 @@ public class MenuService {
     private void appendCurrencyLines(StringBuilder builder, BalanceType type) {
         for (Money currency : Money.values()) {
             long amount = currencyService.getBalance(currency, type);
-            String formattedAmount = messageUtils.formatWithSpacesAndDecimals(amount);
-            // Валюта жирная, сумма обычная
-            builder.append("> *")
-                    .append(currency.name().toUpperCase())
-                    .append(":* ")
-                    .append(formattedAmount)
-                    .append("\n");
+            if (amount != 0) {
+                String formattedAmount = messageUtils.formatWithSpacesAndDecimals(amount);
+                // Валюта жирная, сумма обычная
+                builder.append("> *")
+                        .append(currency.name().toUpperCase())
+                        .append(":* ")
+                        .append(formattedAmount)
+                        .append("\n");
+            }
         }
     }
 
