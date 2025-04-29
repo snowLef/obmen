@@ -9,10 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -80,6 +83,32 @@ public class TelegramSenderImpl implements TelegramSender {
         }
     }
 
+    public void editMessageReplyMarkup(long chatId, int messageId, InlineKeyboardMarkup markup) {
+        EditMessageReplyMarkup edit = EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(chatId))
+                .messageId(messageId)
+                .replyMarkup(markup)
+                .build();
+        try {
+            obmenBot.execute(edit);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }    }
+
+    public Message sendWithMarkup(long chatId, String text, InlineKeyboardMarkup markup) {
+        SendMessage msg = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(messageUtils.escapeMarkdown(text))
+                .replyMarkup(markup)
+                .parseMode("MarkdownV2")
+                .build();
+        try {
+            return obmenBot.execute(msg);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void editMsgWithKeyboard(Long chatId, Integer messageToEdit, String s) {
         EditMessageText message = new EditMessageText();
         message.setChatId(chatId);
@@ -130,5 +159,11 @@ public class TelegramSenderImpl implements TelegramSender {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public void deleteMessages(long chatId, List<Integer> ids) {
+        ids.forEach(
+                x -> deleteMessage(chatId, x)
+        );
     }
 }

@@ -104,6 +104,8 @@ public class CommandMapConfig {
         User user = userService.getUser(ctx.chatId());
         user.pushStatus(Status.AWAITING_CHANGE_BALANCE_TYPE);
         Deal deal = new Deal();
+        deal.setBalanceTypeFrom(BalanceType.OWN);
+        deal.setBalanceTypeTo(BalanceType.OWN);
         deal.setDealType(CHANGE_BALANCE);
         user.setCurrentDeal(deal);
         userService.save(user);
@@ -131,12 +133,10 @@ public class CommandMapConfig {
     }
 
     private void handlePlusMinus(CommandContext ctx) {
-//        userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_PLUS_MINUS_TYPE);
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
         userService.startDeal(ctx.chatId(), null, null, PLUS_MINUS);
         menuService.sendPlusMinusMenu(ctx.chatId());
-//        telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);
     }
 
     private void handlePlusMinusBalance(CommandContext ctx, PlusMinusType type) {

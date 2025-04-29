@@ -3,6 +3,7 @@ package org.example.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.example.model.enums.BalanceType;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
 
@@ -36,6 +37,8 @@ public class Deal {
     private long currentAmount;
 
     private String comment;
+
+    private boolean approved = false;
 
     @Enumerated(EnumType.STRING)
     private DealType dealType;
@@ -87,6 +90,35 @@ public class Deal {
 
     public void setAmountTo(long amount) {
         moneyTo.get(0).setAmount(amount);
+    }
+
+    /**
+     * Откуда снимаем (OWN, FOREIGN, DEBT и т.п.).
+     * Не забывайте устанавливать его при создании/настройке сделки.
+     */
+    private BalanceType balanceTypeFrom;
+
+    /**
+     * Куда кладём (OWN, FOREIGN, DEBT и т.п.).
+     */
+    private BalanceType balanceTypeTo;
+
+    // … геттеры/сеттеры для новых полей …
+
+    public BalanceType getBalanceTypeFrom() {
+        return balanceTypeFrom;
+    }
+
+    public void setBalanceTypeFrom(BalanceType balanceTypeFrom) {
+        this.balanceTypeFrom = balanceTypeFrom;
+    }
+
+    public BalanceType getBalanceTypeTo() {
+        return balanceTypeTo;
+    }
+
+    public void setBalanceTypeTo(BalanceType balanceTypeTo) {
+        this.balanceTypeTo = balanceTypeTo;
     }
 
 }

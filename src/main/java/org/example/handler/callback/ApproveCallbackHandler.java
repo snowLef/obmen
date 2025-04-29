@@ -22,6 +22,5 @@ public class ApproveCallbackHandler implements CallbackCommandHandler {
     @Override
     public void handle(CallbackQuery query, User user) {
         exchangeProcessor.approve(user.getChatId());
-        menuService.sendMainMenu(user.getChatId());
     }
 }

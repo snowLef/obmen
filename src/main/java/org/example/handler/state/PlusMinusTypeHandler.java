@@ -2,7 +2,9 @@ package org.example.handler.state;
 
 import org.example.constants.BotCommands;
 import org.example.infra.TelegramSender;
+import org.example.model.Deal;
 import org.example.model.User;
+import org.example.model.enums.BalanceType;
 import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Status;
 import org.example.repository.UserRepository;
@@ -33,19 +35,28 @@ public class PlusMinusTypeHandler implements UserStateHandler {
         int msgId = message.getMessageId();
 
         PlusMinusType balanceType = null;
+        Deal deal = new Deal();
 
         switch (input) {
             case "Принимаем +":
                 balanceType = PlusMinusType.GET;
+                deal.setBalanceTypeFrom(BalanceType.FOREIGN);
+                deal.setBalanceTypeTo(BalanceType.FOREIGN);
                 break;
             case "Отдаем +":
                 balanceType = PlusMinusType.GIVE;
+                deal.setBalanceTypeFrom(BalanceType.FOREIGN);
+                deal.setBalanceTypeTo(BalanceType.FOREIGN);
                 break;
             case "Даем в долг":
                 balanceType = PlusMinusType.LEND;
+                deal.setBalanceTypeFrom(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.DEBT);
                 break;
             case "Возврат долга":
                 balanceType = PlusMinusType.DEBT_REPAYMENT;
+                deal.setBalanceTypeFrom(BalanceType.DEBT);
+                deal.setBalanceTypeTo(BalanceType.OWN);
                 break;
             default:
                 menuService.sendPlusMinusMenu(chatId);  // Повторно показать меню, если введено что-то не то
@@ -53,6 +64,7 @@ public class PlusMinusTypeHandler implements UserStateHandler {
         }
 
         user.setPlusMinusType(balanceType);
+        user.setCurrentDeal(deal);
         userRepository.save(user);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_NAME);

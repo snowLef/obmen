@@ -27,7 +27,7 @@ public class AwaitingApproveHandler implements UserStateHandler {
             exchangeProcessor.approve(chatId);
             user.pushStatus(Status.IDLE);
             userService.save(user);
-            menuService.sendDealCompletedMessage(chatId);
+            menuService.sendDealCompletedWithCancel(chatId);
 
         } else if (input.equals("❌ Отменить")) {
             user.setCurrentDeal(null);

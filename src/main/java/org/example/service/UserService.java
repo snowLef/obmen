@@ -3,6 +3,7 @@ package org.example.service;
 import jakarta.transaction.Transactional;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
+import org.example.model.enums.BalanceType;
 import org.example.model.enums.DealType;
 import org.example.model.User;
 import org.example.repository.UserRepository;
@@ -88,6 +89,8 @@ public class UserService {
             userRepository.findByChatId(chatId).ifPresent(user -> {
                 Deal deal = new Deal();
                 deal.setDealType(type);
+                deal.setBalanceTypeFrom(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.OWN);
                 user.setCurrentDeal(deal);
                 userRepository.save(user);
             });
@@ -97,6 +100,8 @@ public class UserService {
                 deal.setMoneyFrom(List.of(from));
                 deal.setMoneyTo(List.of(to));
                 deal.setDealType(type);
+                deal.setBalanceTypeFrom(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.OWN);
                 user.setCurrentDeal(deal);
                 userRepository.save(user);
             });
