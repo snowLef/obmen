@@ -27,6 +27,7 @@ public class UserService {
         user.pushStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
+        user.setCurrentCurrencyIndex(0);
         save(user);
     }
 
