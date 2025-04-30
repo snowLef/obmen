@@ -140,11 +140,11 @@ public class ExchangeProcessor {
         long toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
         long required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
 
-        if (fromBalance <= required) {
-            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
-            userService.resetUserState(user);
-            return;
-        }
+//        if (fromBalance <= required) {
+//            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
+//            userService.resetUserState(user);
+//            return;
+//        }
 
         updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - required);
         updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
