@@ -151,6 +151,8 @@ public class CommandMapConfig {
     private void handleCustomChange(CommandContext ctx) {
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_BUYER_NAME);
         Deal deal = new Deal();
+        deal.setBalanceTypeFrom(BalanceType.OWN);
+        deal.setBalanceTypeTo(BalanceType.OWN);
         deal.setDealType(DealType.CUSTOM);
         userService.saveUserCurrentDeal(ctx.chatId(), deal);
 
