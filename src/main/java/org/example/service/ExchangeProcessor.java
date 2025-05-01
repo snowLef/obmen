@@ -138,15 +138,8 @@ public class ExchangeProcessor {
     private void processCustom(long chatId, User user, Deal deal) {
         long fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
         long toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
-        long required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
 
-//        if (fromBalance <= required) {
-//            sendInsufficientFundsMessage(chatId, deal.getMoneyFrom().get(0).getCurrency());
-//            userService.resetUserState(user);
-//            return;
-//        }
-
-        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - required);
+        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - deal.getAmountFrom());
         updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
@@ -156,9 +149,8 @@ public class ExchangeProcessor {
     private void processBuy(long chatId, User user, Deal deal) {
         long fromBalance = getOwnBalance(deal.getMoneyFrom().get(0).getCurrency());
         long toBalance = getOwnBalance(deal.getMoneyTo().get(0).getCurrency());
-        long required = calculateAmountWithRate(deal.getAmountTo(), deal.getExchangeRate());
 
-        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - required);
+        updateOwnBalance(deal.getMoneyFrom().get(0).getCurrency(), fromBalance - deal.getAmountFrom());
         updateOwnBalance(deal.getMoneyTo().get(0).getCurrency(), toBalance + deal.getAmountTo());
         menuService.sendDealCompletedMessage(chatId);
         deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
