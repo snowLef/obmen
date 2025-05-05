@@ -41,7 +41,7 @@ public class ExchangeRateTypeCallbackHandler implements CallbackCommandHandler {
 
         long amountFrom = deal.getAmountFrom();
         long amountTo = deal.getAmountTo();
-        AmountType amountType = user.getAmountType();
+        AmountType amountType = deal.getAmountType();
         double rate = deal.getExchangeRate();
 
         switch (data) {

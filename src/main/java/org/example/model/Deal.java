@@ -3,10 +3,11 @@ package org.example.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.model.enums.BalanceType;
-import org.example.model.enums.DealType;
-import org.example.model.enums.Money;
+import org.example.model.enums.*;
+import org.glassfish.grizzly.http.util.TimeStamp;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +29,11 @@ public class Deal {
     @CollectionTable(name = "deal_money_to", joinColumns = @JoinColumn(name = "deal_id"))
     private List<CurrencyAmount> moneyTo = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    private DealStatus status = DealStatus.NEW;
+
+    private int MessageId;
+
     private String buyerName;
 
     private String cityFromTo;
@@ -42,6 +48,33 @@ public class Deal {
 
     @Enumerated(EnumType.STRING)
     private DealType dealType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private AmountType amountType;
+
+    @Setter
+    private int currentCurrencyIndex;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private CurrencyType currencyType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private PlusMinusType plusMinusType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private ChangeBalanceType changeBalanceType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private BalanceType balanceFrom;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private BalanceType balanceTo;
 
 
     public List<Money> getMoneyFromList() {
@@ -103,22 +136,15 @@ public class Deal {
      */
     private BalanceType balanceTypeTo;
 
-    // … геттеры/сеттеры для новых полей …
+    /** Время создания сделки в БД */
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
 
-    public BalanceType getBalanceTypeFrom() {
-        return balanceTypeFrom;
-    }
+    /** Время отмены сделки (устанавливается вручную при отмене) */
+    private LocalDateTime cancelledAt;
 
-    public void setBalanceTypeFrom(BalanceType balanceTypeFrom) {
-        this.balanceTypeFrom = balanceTypeFrom;
-    }
-
-    public BalanceType getBalanceTypeTo() {
-        return balanceTypeTo;
-    }
-
-    public void setBalanceTypeTo(BalanceType balanceTypeTo) {
-        this.balanceTypeTo = balanceTypeTo;
-    }
+    /** Ник того, кто отменил (либо просто строка) */
+    private String cancelledBy;
 
 }

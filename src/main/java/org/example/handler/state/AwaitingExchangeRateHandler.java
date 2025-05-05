@@ -68,25 +68,6 @@ public class AwaitingExchangeRateHandler implements UserStateHandler {
 
     private void handleCustomRate(long chatId, User user, double rate) {
         Deal deal = user.getCurrentDeal();
-
-        long amountFrom = deal.getAmountFrom();
-        long amountTo = deal.getAmountTo();
-        AmountType amountType = user.getAmountType();
-        CurrencyType currencyType = user.getCurrencyType();
-
-//        if (amountType == AmountType.GIVE) {
-//            if (currencyType == CurrencyType.DIVISION) {
-//                deal.getMoneyTo().get(0).setAmount(Math.round(amountFrom * rate));
-//            } else if (currencyType == CurrencyType.MULTIPLICATION) {
-//                deal.getMoneyTo().get(0).setAmount(Math.round(amountFrom / rate));
-//            }
-//        } else if (amountType == AmountType.RECEIVE) {
-//            if (currencyType == CurrencyType.DIVISION) {
-//                deal.getMoneyFrom().get(0).setAmount(Math.round(amountTo / rate));
-//            } else if (currencyType == CurrencyType.MULTIPLICATION) {
-//                deal.getMoneyFrom().get(0).setAmount(Math.round(amountTo * rate));
-//            }
-//        }
         user.pushStatus(Status.AWAITING_EXCHANGE_RATE_TYPE);
         user.setCurrentDeal(deal);
         userService.save(user);

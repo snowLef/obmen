@@ -99,7 +99,7 @@ public class BackCallbackHandler implements CallbackCommandHandler {
                 if (user.getCurrentDeal().getDealType() == DealType.TRANSPOSITION
                         || user.getCurrentDeal().getDealType() == DealType.INVOICE) {
                     user.pushStatus(Status.AWAITING_APPROVE);
-                    user.setCurrentCurrencyIndex(0);
+                    user.getCurrentDeal().setCurrentCurrencyIndex(0);
                     userService.save(user);
                     menuService.sendTranspositionOrInvoiceApprove(chatId);
                 }
@@ -112,7 +112,7 @@ public class BackCallbackHandler implements CallbackCommandHandler {
             }
             case AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM -> {
                 user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
-                user.setCurrentCurrencyIndex(0);
+                user.getCurrentDeal().setCurrentCurrencyIndex(0);
                 user.setPreviousStatus(null);
                 userService.save(user);
                 telegramSender.sendTextWithKeyboard(chatId, "[Выдано] Введите сумму для "
@@ -120,7 +120,7 @@ public class BackCallbackHandler implements CallbackCommandHandler {
             }
             case AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO -> {
                 user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_TO);
-                user.setCurrentCurrencyIndex(0);
+                user.getCurrentDeal().setCurrentCurrencyIndex(0);
                 user.setPreviousStatus(null);
                 userService.save(user);
                 telegramSender.sendTextWithKeyboard(chatId, "[Получено] Введите сумму для "

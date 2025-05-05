@@ -3,10 +3,12 @@ package org.example.service;
 import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
 import org.example.model.*;
+import org.example.model.enums.DealStatus;
 import org.example.repository.DealRepository;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -45,6 +47,8 @@ public class ExchangeProcessor {
 
             // 2) Сбрасываем флаг approved (если нужно)
             deal.setApproved(false);
+            deal.setStatus(DealStatus.CANCELLED);
+            deal.setCancelledAt(LocalDateTime.now());
             dealRepo.save(deal);
 
             telegramSender.sendText(chatId, "Сделка отменена и баланс восстановлен.");
@@ -65,9 +69,8 @@ public class ExchangeProcessor {
         menuService.sendMainMenu(chatId);
     }
 
-    public void approve(long chatId) {
+    public void approve(long chatId, Deal d) {
         User u = userService.getUser(chatId);
-        Deal d = u.getCurrentDeal();
 
         // проверка
         if (!currencyService.canApply(d)) {
@@ -76,7 +79,7 @@ public class ExchangeProcessor {
             d.setApproved(true);
             dealRepo.save(d);
             currencyService.applyDeal(d);
-            menuService.sendDealCompletedWithCancel(chatId);
+            menuService.sendDealCompletedWithCancel(chatId, d);
         }
 
         telegramSender.deleteMessages(chatId, userService.getMessageIdsToDeleteWithInit(chatId));

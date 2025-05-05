@@ -35,7 +35,7 @@ public class PlusMinusTypeHandler implements UserStateHandler {
         int msgId = message.getMessageId();
 
         PlusMinusType balanceType = null;
-        Deal deal = new Deal();
+        Deal deal = user.getCurrentDeal();
 
         switch (input) {
             case "Принимаем +":
@@ -63,7 +63,7 @@ public class PlusMinusTypeHandler implements UserStateHandler {
                 return;
         }
 
-        user.setPlusMinusType(balanceType);
+        deal.setPlusMinusType(balanceType);
         user.setCurrentDeal(deal);
         userRepository.save(user);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);

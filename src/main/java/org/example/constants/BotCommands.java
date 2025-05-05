@@ -1,7 +1,7 @@
 package org.example.constants;
 
 public class BotCommands {
-    public static final String APPROVE_YES = "yes";
+    public static final String APPROVE = "approve";
     public static final String APPROVE_NO = "no";
 
     public static final String ASK_FOR_NAME = "Введите имя:";

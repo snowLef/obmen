@@ -2,10 +2,9 @@ package org.example.handler.callback;
 
 import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
+import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.BalanceType;
-import org.example.model.enums.CurrencyType;
-import org.example.model.enums.Money;
 import org.example.model.enums.Status;
 import org.example.service.UserService;
 import org.example.ui.MenuService;
@@ -32,6 +31,7 @@ public class ChooseBalanceCallbackHandler implements CallbackCommandHandler {
         Long chatId = query.getMessage().getChatId();
         String data = query.getData();
         BalanceType type = null;
+        Deal deal = user.getCurrentDeal();
 
         switch (data) {
             case "OWN" -> type = BalanceType.OWN;
@@ -40,14 +40,14 @@ public class ChooseBalanceCallbackHandler implements CallbackCommandHandler {
         }
 
         if (user.getStatus().equals(Status.AWAITING_CHOOSE_BALANCE_FROM)) {
-            user.setBalanceFrom(type);
+            deal.setBalanceTypeFrom(type);
             if (type == BalanceType.OWN) {
-                user.setBalanceTo(BalanceType.FOREIGN);
+                deal.setBalanceTypeTo(BalanceType.FOREIGN);
             } else if (type == BalanceType.FOREIGN) {
-                user.setBalanceTo(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.OWN);
             }
             user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
-            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Будет списано с: %s".formatted(user.getBalanceFrom().getDisplayName()));
+            telegramSender.editMsg(chatId, user.getMessageToEdit(), "Будет списано с: %s".formatted(deal.getBalanceTypeFrom().getDisplayName()));
             userService.save(user);
             menuService.sendSelectFullCurrency(chatId, "Выберите валюту получения");
         }

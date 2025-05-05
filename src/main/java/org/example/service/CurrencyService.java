@@ -4,14 +4,18 @@ import jakarta.transaction.Transactional;
 import org.example.infra.TelegramSender;
 import org.example.model.*;
 import org.example.model.enums.BalanceType;
+import org.example.model.enums.DealStatus;
 import org.example.model.enums.Money;
 import org.example.repository.BalanceEventRepository;
 import org.example.repository.CurrencyRepository;
+import org.example.repository.DealRepository;
 import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CurrencyService {
@@ -21,6 +25,7 @@ public class CurrencyService {
     private ExchangeProcessor exchangeProcessor;
     private MenuService menuService;
     private BalanceEventRepository repo;
+    private DealRepository dealRepo;
 
 
     @Autowired
@@ -46,6 +51,11 @@ public class CurrencyService {
     @Autowired
     public void setRepo(BalanceEventRepository repo) {
         this.repo = repo;
+    }
+
+    @Autowired
+    public void setDealRepo(DealRepository dealRepo) {
+        this.dealRepo = dealRepo;
     }
 
     public long getBalance(Money money, BalanceType type) {
@@ -88,6 +98,8 @@ public class CurrencyService {
                     oldTo + to.getAmount()
             );
         }
+        deal.setStatus(DealStatus.APPLIED);
+        dealRepo.save(deal);
     }
 
     @Transactional
@@ -141,12 +153,6 @@ public class CurrencyService {
         }
     }
 
-//    // Получить баланс для определенного типа баланса
-//    public long getBalance(Money money, BalanceType type) {
-//        Currency currency = getCurrency(money);
-//        return currency != null ? currency.getBalance(type) : 0L;
-//    }
-
     // Переместить средства между типами балансов (например, с "своего" на "долг")
     public void moveBalance(long chatId, Money money, BalanceType from, BalanceType to, long amount) {
 
@@ -168,5 +174,28 @@ public class CurrencyService {
     // Получить валюту по названию
     private Currency getCurrency(Money money) {
         return currencyRepository.findByName(money.name()).orElse(null);
+    }
+
+    public Map<Money, Long> calculateFixedDeltas() {
+        List<Deal> fixed = dealRepo.findByStatus(DealStatus.FIX);
+        Map<Money, Long> deltaByCurrency = new EnumMap<>(Money.class);
+
+        for (Deal d : fixed) {
+            for (CurrencyAmount from : d.getMoneyFrom()) {
+                deltaByCurrency.merge(
+                        from.getCurrency(),
+                        -from.getAmount(),
+                        Long::sum
+                );
+            }
+            for (CurrencyAmount to : d.getMoneyTo()) {
+                deltaByCurrency.merge(
+                        to.getCurrency(),
+                        +to.getAmount(),
+                        Long::sum
+                );
+            }
+        }
+        return deltaByCurrency;
     }
 }

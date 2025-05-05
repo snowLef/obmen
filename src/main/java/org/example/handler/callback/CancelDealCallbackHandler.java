@@ -15,13 +15,32 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CancelDealCallbackHandler implements CallbackCommandHandler {
 
-    private final ExchangeProcessor exchangeProcessor;
     private final TelegramSender telegramSender;
 
     @Override
     public void handle(CallbackQuery query, User user) {
         long chatId = query.getMessage().getChatId();
-        long dealId = Long.parseLong(query.getData().split(":")[1]);
+        String[] parts = query.getData().split(":");
+        String action = parts[0];
+        long   dealId;
+        int    origMsg;
+
+        // Всегда парсим dealId:
+        if (parts.length >= 2) {
+            dealId = Long.parseLong(parts[1]);
+        } else {
+            // Без dealId ничего не делать
+            return;
+        }
+
+
+        // origMsgId может быть на позиции 2, а может и отсутствовать
+        if (parts.length >= 3) {
+            origMsg = Integer.parseInt(parts[2]);
+        } else {
+            // берём текущее messageId той кнопки, по которой кликнули
+            origMsg = query.getMessage().getMessageId();
+        }
 
         // Сразу убираем старую кнопку, чтобы не было повторных кликов
         telegramSender.editMessageReplyMarkup(
@@ -33,11 +52,11 @@ public class CancelDealCallbackHandler implements CallbackCommandHandler {
         // Шлём подтверждение «Вы уверены?»
         InlineKeyboardButton yes = InlineKeyboardButton.builder()
                 .text("Да, отменить")
-                .callbackData("confirm_cancel:" + dealId)
+                .callbackData("confirm_cancel:" + dealId + ":" + origMsg)
                 .build();
-        InlineKeyboardButton no  = InlineKeyboardButton.builder()
+        InlineKeyboardButton no = InlineKeyboardButton.builder()
                 .text("Нет, оставить")
-                .callbackData("deny_cancel:"    + dealId)
+                .callbackData("deny_cancel:" + dealId + ":" + origMsg)
                 .build();
         InlineKeyboardMarkup confirm = InlineKeyboardMarkup.builder()
                 .keyboardRow(List.of(yes, no))

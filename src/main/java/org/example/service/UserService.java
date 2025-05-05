@@ -17,6 +17,7 @@ import java.util.List;
 public class UserService {
 
     private UserRepository userRepository;
+    private DealService dealService;
 
     @Autowired
     public void setUserRepository(UserRepository userRepository) {
@@ -24,12 +25,14 @@ public class UserService {
     }
 
     public void resetUserState(User user) {
-        user.setCurrentDeal(null);
+        Deal deal = new Deal();
         user.pushStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
-        user.setCurrentCurrencyIndex(0);
+        user.setCurrentDeal(null);
         save(user);
+        deal.setCurrentCurrencyIndex(0);
+        dealService.save(deal);
     }
 
     public User getUser(Long chatId) {
@@ -121,4 +124,8 @@ public class UserService {
                 .orElse(List.of());
     }
 
+    @Autowired
+    public void setDealService(DealService dealService) {
+        this.dealService = dealService;
+    }
 }

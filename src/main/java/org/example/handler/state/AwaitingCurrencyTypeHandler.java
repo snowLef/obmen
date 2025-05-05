@@ -1,6 +1,7 @@
 package org.example.handler.state;
 
 import lombok.RequiredArgsConstructor;
+import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.CurrencyType;
 import org.example.model.enums.Status;
@@ -21,6 +22,7 @@ public class AwaitingCurrencyTypeHandler implements UserStateHandler {
         long chatId = message.getChatId();
         int msgId = message.getMessageId();
         String text = message.getText();
+        Deal deal = user.getCurrentDeal();
 
         CurrencyType selectedType = parseCurrencyType(text);
         if (selectedType == null) {
@@ -28,8 +30,9 @@ public class AwaitingCurrencyTypeHandler implements UserStateHandler {
             return;
         }
 
-        user.setCurrencyType(selectedType);
+        deal.setCurrencyType(selectedType);
         user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
+        user.setCurrentDeal(deal);
         userService.save(user);
 
         menuService.sendEnterExchangeRate(chatId);

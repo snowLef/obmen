@@ -1,9 +1,9 @@
 package org.example.ui;
 
-import lombok.RequiredArgsConstructor;
 import org.example.constants.BotCommands;
 import org.example.model.*;
 import org.example.model.enums.*;
+import org.example.repository.DealRepository;
 import org.example.service.CurrencyService;
 import org.example.infra.TelegramSender;
 import org.example.service.UserService;
@@ -17,9 +17,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMar
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 
 import static org.example.model.enums.BalanceType.*;
 import static org.example.model.enums.Money.*;
@@ -34,6 +33,7 @@ public class MenuService {
     private CurrencyService currencyService;
     private MessageUtils messageUtils;
     private TelegramSender telegramSender;
+    private DealRepository dealRepo;
 
     @Autowired
     public void setUserService(UserService userService) {
@@ -53,6 +53,11 @@ public class MenuService {
     @Autowired
     public void setTelegramSender(TelegramSender telegramSender) {
         this.telegramSender = telegramSender;
+    }
+
+    @Autowired
+    public void setDealRepo(DealRepository dealRepo) {
+        this.dealRepo = dealRepo;
     }
 
     public void sendChangeBalanceMenu(long chatId) {
@@ -227,7 +232,7 @@ public class MenuService {
                                     Имя: %s
                                     Сумма: %s %s
                                     """.formatted(
-                                    user.getPlusMinusType().getType().toUpperCase(),
+                                    deal.getPlusMinusType().getType().toUpperCase(),
                                     deal.getBuyerName(),
                                     receivedCurrencies, issuedCurrencies
                             )
@@ -258,7 +263,7 @@ public class MenuService {
                                     Сумма: *%s %s*
                                     """.formatted(
                                     deal.getDealType().getType(),
-                                    user.getBalanceFrom().getDisplayName(), user.getBalanceTo().getDisplayName(),
+                                    deal.getBalanceTypeFrom().getDisplayName(), deal.getBalanceTypeTo().getDisplayName(),
                                     messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency()
                             )
                     )
@@ -298,8 +303,8 @@ public class MenuService {
                     )
             );
         } else if (deal.getDealType() == DealType.CHANGE_BALANCE) {
-            String type = user.getChangeBalanceType() == ChangeBalanceType.ADD ? "Получено" : "Выдано";
-            long amount = user.getChangeBalanceType() == ChangeBalanceType.ADD ? deal.getMoneyTo().get(0).getAmount() : deal.getMoneyFrom().get(0).getAmount();
+            String type = deal.getChangeBalanceType() == ChangeBalanceType.ADD ? "Получено" : "Выдано";
+            long amount = deal.getChangeBalanceType() == ChangeBalanceType.ADD ? deal.getMoneyTo().get(0).getAmount() : deal.getMoneyFrom().get(0).getAmount();
             message.setText(messageUtils.escapeMarkdown("""
                                     Подтвердить?
                                     *ИЗМЕНЕНИЕ БАЛАНСА*
@@ -307,7 +312,7 @@ public class MenuService {
                                     %s *%s %s*
                                     Комментарий: %s
                                     """.formatted(
-                                    user.getChangeBalanceType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
+                                    deal.getChangeBalanceType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
                                     type, messageUtils.formatWithSpacesAndDecimals(amount), deal.getMoneyFrom().get(0).getCurrency().getName(),
                                     deal.getComment()
                             )
@@ -333,7 +338,8 @@ public class MenuService {
         }
 
         List<InlineKeyboardButton> row = List.of(
-                createButton("Да ✅", BotCommands.APPROVE_YES)
+                createButton("Да ✅", BotCommands.APPROVE + ":" + deal.getId()),
+                createButton("\uD83D\uDCCC Фикс", "fix:" + deal.getId())
         );
 
         InlineKeyboardMarkup base = buildInlineKeyboard(List.of(row));
@@ -342,41 +348,6 @@ public class MenuService {
 
         Message message1 = telegramSender.send(message);
         userService.addMessageToDel(chatId, message1.getMessageId());
-    }
-
-    public void sendBalance(long chatId) {
-        messageUtils.sendFormattedText(chatId, formatBalances());
-    }
-
-    private String formatBalances() {
-        StringBuilder message = new StringBuilder();
-
-        // Заголовки (жирный, подчёркнутый, верхний регистр)
-        message.append("> __*НАШ БАЛАНС:*__\n");
-        appendCurrencyLines(message, OWN);
-
-        message.append("\n> __*ЧУЖОЙ БАЛАНС:*__\n");
-        appendCurrencyLines(message, BalanceType.FOREIGN);
-
-        message.append("\n> __*ДОЛГ:*__\n");
-        appendCurrencyLines(message, BalanceType.DEBT);
-
-        return message.toString();
-    }
-
-    private void appendCurrencyLines(StringBuilder builder, BalanceType type) {
-        for (Money currency : Money.values()) {
-            long amount = currencyService.getBalance(currency, type);
-            if (amount != 0) {
-                String formattedAmount = messageUtils.formatWithSpacesAndDecimals(amount);
-                // Валюта жирная, сумма обычная
-                builder.append("> *")
-                        .append(currency.name().toUpperCase())
-                        .append(":* ")
-                        .append(formattedAmount)
-                        .append("\n");
-            }
-        }
     }
 
     public void sendTranspositionOrInvoiceApprove(long chatId) {
@@ -408,7 +379,8 @@ public class MenuService {
         );
 
         List<InlineKeyboardButton> row = List.of(
-                createButton("Да ✅", BotCommands.APPROVE_YES)
+                createButton("Да ✅", BotCommands.APPROVE + ":" + deal.getId()),
+                createButton("\uD83D\uDCCC Фикс", "fix:" + deal.getId())
         );
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
@@ -419,12 +391,13 @@ public class MenuService {
         userService.addMessageToDel(chatId, msg.getMessageId());
     }
 
-    public void sendDealCompletedWithCancel(long chatId) {
+    public void sendDealCompletedWithCancel(long chatId, Deal deal) {
         User user = userService.getUser(chatId);
-        Deal deal = user.getCurrentDeal();
 
         // Основной текст
-        StringBuilder text = new StringBuilder(String.format("Сделка №%d завершена ✅\n", deal.getId()));
+        int day = LocalDate.now().getDayOfMonth();
+        int month = LocalDate.now().getMonthValue();
+        StringBuilder text = new StringBuilder(String.format("%s/%s №%d ✅\n", day, month, deal.getId()));
 
         switch (deal.getDealType()) {
             case TRANSPOSITION, INVOICE -> text.append(sendTranspositionOrInvoiceComplete(deal));
@@ -434,21 +407,24 @@ public class MenuService {
             case MOVING_BALANCE -> text.append(sendBalanceMovedMessage(user, deal));
         }
 
-        // Кнопка «Отменить сделку»
-        InlineKeyboardButton cancel = InlineKeyboardButton.builder()
-                .text("Отменить сделку")
-                .callbackData("cancel_deal:" + deal.getId())
-                .build();
-        InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
-                .keyboardRow(List.of(cancel))
+        InlineKeyboardMarkup kb = InlineKeyboardBuilder.builder()
+                .button("Отменить сделку", "show_cancel:" + deal.getId() + ":" /* placeholder */)
                 .build();
 
-        telegramSender.sendWithMarkup(chatId, messageUtils.escapeMarkdown(text.toString()), markup);
+        // отправляем без callbackData сообщение, чтобы получить реальный msgId
+        Message sent = telegramSender.sendWithMarkup(chatId, text.toString(), kb);
+        int msgId = sent.getMessageId();
+
+        // теперь обновим разметку, в которой callbackData содержит правильный msgId
+        InlineKeyboardMarkup kbWithId = InlineKeyboardBuilder.builder()
+                .button("Отменить сделку", "show_cancel:" + deal.getId() + ":" + msgId)
+                .build();
+        telegramSender.editReplyMarkup(chatId, msgId, kbWithId);
     }
 
     private String sendBalanceMovedMessage(User user, Deal deal) {
-        String balanceFrom = user.getBalanceFrom().getDisplayName();
-        String balanceTo = user.getBalanceTo().getDisplayName();
+        String balanceFrom = deal.getBalanceTypeFrom().getDisplayName();
+        String balanceTo = deal.getBalanceTypeTo().getDisplayName();
         return """
                 Баланс изменен ✅
                 %s - %s
@@ -459,14 +435,14 @@ public class MenuService {
     }
 
     private String sendChangedBalanceMessage(User user, Deal deal) {
-        long amount = user.getChangeBalanceType() == ChangeBalanceType.ADD ? deal.getMoneyTo().get(0).getAmount() : deal.getMoneyFrom().get(0).getAmount();
+        long amount = deal.getChangeBalanceType() == ChangeBalanceType.ADD ? deal.getMoneyTo().get(0).getAmount() : deal.getMoneyFrom().get(0).getAmount();
         return """
                 ✅*ИЗМЕНЕНИЕ БАЛАНСА*
                 %s *%s*
                 *%s %s*
                 Комментарий: %s
                 """.formatted(
-                user.getChangeBalanceType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
+                deal.getChangeBalanceType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
                 messageUtils.formatWithSpacesAndDecimals(amount), deal.getMoneyFrom().get(0).getCurrency().getName(),
                 deal.getComment()
         );
@@ -478,26 +454,25 @@ public class MenuService {
         String receivedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyTo());
         String issuedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyFrom());
 
-        return messageUtils.escapeMarkdown("""
-                        Сделка завершена ✅
-                        *%s*
-                        Клиент: %s
-                        %s
-                        Получено: %s
-                        Выдано: %s
-                        """.formatted(
-                        dealType.toUpperCase(),
-                        deal.getBuyerName(),
-                        deal.getCityFromTo(),
-                        receivedCurrencies,
-                        issuedCurrencies
-                )
+        return """
+                Сделка завершена ✅
+                *%s*
+                Клиент: %s
+                %s
+                Получено: %s
+                Выдано: %s
+                """.formatted(
+                dealType.toUpperCase(),
+                deal.getBuyerName(),
+                deal.getCityFromTo(),
+                receivedCurrencies,
+                issuedCurrencies
         );
     }
 
 
     private String sendBalancePlusMinusMessage(User user, Deal deal) {
-        String changeType = user.getPlusMinusType().getType();
+        String changeType = deal.getPlusMinusType().getType();
 
         String receivedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyTo());
         String issuedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyFrom());
@@ -516,68 +491,64 @@ public class MenuService {
 
     private String sendDealCompletedMessage(Deal deal) {
         if (deal.getDealType() == DealType.CUSTOM) {
-            return messageUtils.escapeMarkdown("""
-                            Сделка завершена ✅
-                            *%s*
-                            Имя: %s
-                            Получено: *%s %s*
-                            Курс: %s
-                            Выдано: *%s %s*
-                            """.formatted(
-                            deal.getDealType().getType(),
-                            deal.getBuyerName(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
-                            deal.getExchangeRate(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
-                    )
+            return """
+                    Сделка завершена ✅
+                    *%s*
+                    Имя: %s
+                    Получено: *%s %s*
+                    Курс: %s
+                    Выдано: *%s %s*
+                    """.formatted(
+                    deal.getDealType().getType(),
+                    deal.getBuyerName(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                    deal.getExchangeRate(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
             );
         } else if (deal.getDealType() == DealType.BUY) {
-            return messageUtils.escapeMarkdown("""
-                            Сделка завершена ✅
-                            *%s %s*
-                            Имя: %s
-                            Получено: *%s %s*
-                            Курс: %s
-                            Выдано: *%s %s*
-                            """.formatted(
-                            deal.getDealType().getType(), deal.getMoneyTo().get(0).getCurrency().getName(),
-                            deal.getBuyerName(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
-                            deal.getExchangeRate(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
-                    )
+            return """
+                    Сделка завершена ✅
+                    *%s %s*
+                    Имя: %s
+                    Получено: *%s %s*
+                    Курс: %s
+                    Выдано: *%s %s*
+                    """.formatted(
+                    deal.getDealType().getType(), deal.getMoneyTo().get(0).getCurrency().getName(),
+                    deal.getBuyerName(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                    deal.getExchangeRate(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
             );
         } else if (deal.getDealType() == DealType.SELL) {
-            return messageUtils.escapeMarkdown("""
-                            Сделка завершена ✅
-                            *%s %s*
-                            Имя: %s
-                            Получено: *%s %s*
-                            Курс: %s
-                            Выдано: *%s %s*
-                            """.formatted(
-                            deal.getDealType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
-                            deal.getBuyerName(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
-                            deal.getExchangeRate(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
-                    )
+            return """
+                    Сделка завершена ✅
+                    *%s %s*
+                    Имя: %s
+                    Получено: *%s %s*
+                    Курс: %s
+                    Выдано: *%s %s*
+                    """.formatted(
+                    deal.getDealType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
+                    deal.getBuyerName(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                    deal.getExchangeRate(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
             );
         } else {
-            return messageUtils.escapeMarkdown("""
-                            Сделка завершена ✅
-                            *%s %s*
-                            Имя: %s
-                            Получено: *%s %s*
-                            Курс: %s
-                            Выдано: *%s %s*
-                            """.formatted(
-                            deal.getDealType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
-                            deal.getBuyerName(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
-                            deal.getExchangeRate(),
-                            messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
-                    )
+            return """
+                    Сделка завершена ✅
+                    *%s %s*
+                    Имя: %s
+                    Получено: *%s %s*
+                    Курс: %s
+                    Выдано: *%s %s*
+                    """.formatted(
+                    deal.getDealType().getType(), deal.getMoneyFrom().get(0).getCurrency().getName(),
+                    deal.getBuyerName(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyTo().get(0).getAmount()), deal.getMoneyTo().get(0).getCurrency(),
+                    deal.getExchangeRate(),
+                    messageUtils.formatWithSpacesAndDecimals(deal.getMoneyFrom().get(0).getAmount()), deal.getMoneyFrom().get(0).getCurrency()
             );
         }
     }
@@ -690,6 +661,85 @@ public class MenuService {
 
     public void sendEnterExchangeRate(long chatId) {
         telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
+    }
+
+    public void sendBalance(long chatId) {
+        // 1) Собираем дельты зафиксированных сделок
+        Map<BalanceType, Map<Money, Long>> fixedDeltas = calculateFixedDeltas();
+
+        // 2) Отправляем уже отформатированный текст
+        messageUtils.sendFormattedText(chatId, formatBalances(fixedDeltas));
+    }
+
+    private String formatBalances(Map<BalanceType, Map<Money, Long>> fixedDeltas) {
+        StringBuilder message = new StringBuilder();
+
+        message.append("> __*НАШ БАЛАНС:*__\n");
+        appendCurrencyLines(message, BalanceType.OWN,     fixedDeltas.getOrDefault(BalanceType.OWN,     Map.of()));
+
+        message.append("\n> __*ЧУЖОЙ БАЛАНС:*__\n");
+        appendCurrencyLines(message, BalanceType.FOREIGN, fixedDeltas.getOrDefault(BalanceType.FOREIGN, Map.of()));
+
+        message.append("\n> __*ДОЛГ:*__\n");
+        appendCurrencyLines(message, BalanceType.DEBT,    fixedDeltas.getOrDefault(BalanceType.DEBT,    Map.of()));
+
+        return message.toString();
+    }
+
+    private void appendCurrencyLines(StringBuilder builder,
+                                     BalanceType type,
+                                     Map<Money, Long> fixedForType)
+    {
+        for (Money currency : Money.values()) {
+            long amount = currencyService.getBalance(currency, type);
+            // Покажем строку, если есть либо основной баланс, либо фикс
+            long fixed = fixedForType.getOrDefault(currency, 0L);
+            if (amount != 0 || fixed != 0) {
+                String fmtAmount = messageUtils.formatWithSpacesAndDecimals(amount);
+                builder.append("> *")
+                        .append(currency.name().toUpperCase())
+                        .append(":* ")
+                        .append(fmtAmount);
+
+                if (fixed != 0) {
+                    String fmtFixed = messageUtils.formatWithSpacesAndDecimals(fixed);
+                    // плюс или минус автоматически в fmtFixed
+                    builder.append(" (")
+                            .append(fmtFixed)
+                            .append(")");
+                }
+                builder.append("\n");
+            }
+        }
+    }
+
+    private Map<BalanceType, Map<Money, Long>> calculateFixedDeltas() {
+        // собираем все FIX‐сделки
+        List<Deal> fixedDeals = dealRepo.findByStatus(DealStatus.FIX);
+
+        // структура: для каждого типа баланса — карта валют → дельта
+        Map<BalanceType, Map<Money, Long>> result = new EnumMap<>(BalanceType.class);
+        for (BalanceType t : BalanceType.values()) {
+            result.put(t, new EnumMap<>(Money.class));
+        }
+
+        for (Deal d : fixedDeals) {
+            BalanceType fromType = d.getBalanceTypeFrom();
+            BalanceType toType   = d.getBalanceTypeTo();
+
+            // вычитаем списанное
+            for (CurrencyAmount from : d.getMoneyFrom()) {
+                result.get(fromType)
+                        .merge(from.getCurrency(), -from.getAmount(), Long::sum);
+            }
+            // добавляем поступившее
+            for (CurrencyAmount to : d.getMoneyTo()) {
+                result.get(toType)
+                        .merge(to.getCurrency(), +to.getAmount(), Long::sum);
+            }
+        }
+
+        return result;
     }
 
 }
