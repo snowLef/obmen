@@ -13,15 +13,12 @@ import org.example.repository.DealRepository;
 import org.example.service.ExcelReportService;
 import org.example.service.ExchangeProcessor;
 import org.example.service.UserService;
-import org.example.ui.InlineKeyboardBuilder;
 import org.example.ui.MenuService;
 import org.example.util.MessageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -73,7 +70,7 @@ public class CommandMapConfig {
     }
 
     @Bean
-    public Map<String, CommandHandler> commandMap(ExchangeProcessor exchangeProcessor) {
+    public Map<String, CommandHandler> commandMap() {
         Map<String, CommandHandler> map = new LinkedHashMap<>();
 
         // Курсы
@@ -91,8 +88,8 @@ public class CommandMapConfig {
         // Сервисные
         map.put("Меню", ctx -> menuService.sendMainMenu(ctx.chatId()));
         map.put("/start", ctx -> menuService.sendMainMenu(ctx.chatId()));
-        map.put("/fix", this::handleFixDeals);
-        map.put("/report", this::handleReport);
+        map.put("Фикс", this::handleFixDeals);
+        map.put("Отчет", this::handleReport);
 
         map.put("Валютный обмен", this::handleCustomChange);
         map.put("Перестановка", ctx -> handleTranspositionOrInvoice(ctx, TRANSPOSITION));
@@ -106,15 +103,7 @@ public class CommandMapConfig {
             menuService.sendMainMenu(ctx.chatId());
         });
 
-//        map.put("Принимаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GET));
-//        map.put("Отдаем +", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.GIVE));
-//        map.put("Даем в долг", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.LEND));
-//        map.put("Возврат долга", ctx -> handlePlusMinusBalance(ctx, PlusMinusType.DEBT_REPAYMENT));
-
         map.put("/cancel", this::cancel);
-
-//        map.put("Пополнение", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.ADD));
-//        map.put("Вывод", ctx -> handleAddOrWithdrawalBalance(ctx, ChangeBalanceType.WITHDRAWAL));
 
         return map;
     }
@@ -124,7 +113,7 @@ public class CommandMapConfig {
         // Вытягиваем все сделки (или фильтруем нужные)
         List<Deal> deals = dealRepo.findAll();
         byte[] excel = reportService.generateDealReport(deals);
-        telegramSender.sendExcelReport(chatId, excel, "deals-report.xlsx");
+        telegramSender.sendExcelReport(chatId, excel, "full-report.xlsx");
     }
 
     private void handleFixDeals(CommandContext ctx) {
@@ -181,6 +170,7 @@ public class CommandMapConfig {
         deal.setBalanceTypeFrom(BalanceType.OWN);
         deal.setBalanceTypeTo(BalanceType.OWN);
         deal.setDealType(CHANGE_BALANCE);
+        deal.setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
         user.setCurrentDeal(deal);
         userService.save(user);
         menuService.sendChangeBalanceMenu(ctx.chatId());
@@ -191,6 +181,7 @@ public class CommandMapConfig {
         user.pushStatus(Status.AWAITING_CHOOSE_BALANCE_FROM);
         Deal deal = new Deal();
         deal.setDealType(MOVING_BALANCE);
+        deal.setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
         user.setCurrentDeal(deal);
         userService.save(user);
         menuService.sendSelectBalance(ctx.chatId(), "Откуда списать?");
@@ -203,6 +194,7 @@ public class CommandMapConfig {
         deal.setBalanceTypeFrom(BalanceType.OWN);
         deal.setBalanceTypeTo(BalanceType.OWN);
         deal.setDealType(dealType);
+        deal.setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
         user.setCurrentDeal(deal);
         user.pushStatus(Status.AWAITING_BUYER_NAME);
         userService.save(user);
@@ -212,7 +204,10 @@ public class CommandMapConfig {
     private void handlePlusMinus(CommandContext ctx) {
         userService.saveUserStatus(ctx.chatId(), Status.AWAITING_PLUS_MINUS_TYPE);
         userService.addMessageToDel(ctx.chatId(), ctx.msgId());
-        userService.startDeal(ctx.chatId(), null, null, PLUS_MINUS);
+        userService.startDeal(ctx.chatId(), null, null, PLUS_MINUS, ctx.message());
+        User user = userService.getUser(ctx.chatId());
+        user.getCurrentDeal().setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
+        userService.save(user);
         menuService.sendPlusMinusMenu(ctx.chatId());
     }
 
@@ -221,6 +216,7 @@ public class CommandMapConfig {
         Deal deal = new Deal();
         deal.setBalanceTypeFrom(BalanceType.OWN);
         deal.setBalanceTypeTo(BalanceType.OWN);
+        deal.setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
         deal.setDealType(CUSTOM);
         userService.saveUserCurrentDeal(ctx.chatId(), deal);
 
@@ -232,7 +228,10 @@ public class CommandMapConfig {
         long chatId = ctx.chatId();
         Message message = ctx.message();
 
-        userService.startDeal(chatId, new CurrencyAmount(from, 0), new CurrencyAmount(to, 0), dealType);
+        userService.startDeal(chatId, new CurrencyAmount(from, 0), new CurrencyAmount(to, 0), dealType, ctx.message());
+        User user = userService.getUser(ctx.chatId());
+        user.getCurrentDeal().setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
+        userService.save(user);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         userService.addMessageToDel(chatId, message.getMessageId());
         telegramSender.sendTextWithKeyboard(ctx.chatId(), BotCommands.ASK_FOR_NAME);

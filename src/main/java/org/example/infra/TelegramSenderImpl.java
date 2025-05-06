@@ -223,4 +223,17 @@ public class TelegramSenderImpl implements TelegramSender {
             throw new RuntimeException("Ошибка отправки файла", e);
         }
     }
+
+    public void sendDocument(long chatId, InputFile file, String caption) {
+        SendDocument doc = new SendDocument();
+        doc.setChatId(String.valueOf(chatId));
+        doc.setDocument(file);
+        doc.setCaption(caption);
+
+        try {
+            obmenBot.execute(doc);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException("Ошибка при отправке документа", e);
+        }
+    }
 }

@@ -32,17 +32,6 @@ public class ObmenBot extends TelegramLongPollingBot implements TelegramClient {
         updateRouter.route(update);
     }
 
-    // Реализация TelegramClient
-    @Override
-    public Message sendMessage(SendMessage message) throws TelegramApiException {
-        return execute(message);
-    }
-
-    @Override
-    public void editMessage(EditMessageText message) throws TelegramApiException {
-        execute(message);
-    }
-
     @Override
     public void deleteMessage(DeleteMessage message) throws TelegramApiException {
         execute(message);

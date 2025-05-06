@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.example.model.enums.*;
-import org.glassfish.grizzly.http.util.TimeStamp;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -147,4 +146,7 @@ public class Deal {
     /** Ник того, кто отменил (либо просто строка) */
     private String cancelledBy;
 
+    private String createdBy;
+
+    private String approvedBy;
 }

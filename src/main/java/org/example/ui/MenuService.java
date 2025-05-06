@@ -18,6 +18,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import static org.example.model.enums.BalanceType.*;
@@ -394,10 +395,7 @@ public class MenuService {
     public void sendDealCompletedWithCancel(long chatId, Deal deal) {
         User user = userService.getUser(chatId);
 
-        // Основной текст
-        int day = LocalDate.now().getDayOfMonth();
-        int month = LocalDate.now().getMonthValue();
-        StringBuilder text = new StringBuilder(String.format("%s/%s №%d ✅\n", day, month, deal.getId()));
+        StringBuilder text = new StringBuilder(String.format("%s/%s ✅\n", deal.getCreatedAt().format(DateTimeFormatter.ofPattern("MMdd")), deal.getId()));
 
         switch (deal.getDealType()) {
             case TRANSPOSITION, INVOICE -> text.append(sendTranspositionOrInvoiceComplete(deal));
@@ -674,7 +672,7 @@ public class MenuService {
     private String formatBalances(Map<BalanceType, Map<Money, Long>> fixedDeltas) {
         StringBuilder message = new StringBuilder();
 
-        message.append("> __*НАШ БАЛАНС:*__\n");
+        message.append("> __*---НАШ БАЛАНС---:*__\n");
         appendCurrencyLines(message, BalanceType.OWN,     fixedDeltas.getOrDefault(BalanceType.OWN,     Map.of()));
 
         message.append("\n> __*ЧУЖОЙ БАЛАНС:*__\n");

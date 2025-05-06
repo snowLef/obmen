@@ -9,6 +9,7 @@ import org.example.ui.MenuService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @Service
@@ -26,7 +27,7 @@ public class ExchangeProcessor {
         Deal d = u.getCurrentDeal();
         if (d != null && d.isApproved()) {
             currencyService.compensateDeal(d.getId());
-            telegramSender.sendText(chatId, "Сделка отменена и баланс восстановлен.");
+            telegramSender.sendText(chatId, "Сделка %s/%s отменена и баланс восстановлен.".formatted(d.getCreatedAt().format(DateTimeFormatter.ofPattern("MMdd")), d.getId()));
         } else {
             telegramSender.sendText(chatId, "Сделка отменена.");
         }
@@ -51,7 +52,7 @@ public class ExchangeProcessor {
             deal.setCancelledAt(LocalDateTime.now());
             dealRepo.save(deal);
 
-            telegramSender.sendText(chatId, "Сделка отменена и баланс восстановлен.");
+            telegramSender.sendText(chatId, "Сделка %s/%s отменена и баланс восстановлен.".formatted(deal.getCreatedAt().format(DateTimeFormatter.ofPattern("MMdd")), deal.getId()));
         } else {
             telegramSender.sendText(chatId, "Сделка не была подтверждена или уже отменена.");
         }
@@ -77,6 +78,7 @@ public class ExchangeProcessor {
             telegramSender.sendText(chatId, "Недостаточно средств для сделки.");
         } else {
             d.setApproved(true);
+//            d.setApprovedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
             dealRepo.save(d);
             currencyService.applyDeal(d);
             menuService.sendDealCompletedWithCancel(chatId, d);

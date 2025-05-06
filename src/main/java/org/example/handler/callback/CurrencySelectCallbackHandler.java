@@ -85,18 +85,6 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
     }
 
     private void handleDonePlusMinus(User user, Deal deal, Long chatId) {
-//        if (deal.getMoneyFromList().isEmpty() && user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//            menuService.sendMainMenu(chatId);
-//        } else if (deal.getMoneyToList().isEmpty() && user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//            menuService.sendMainMenu(chatId);
-//        }
-
         boolean isSelectingTo = List.of(PlusMinusType.GIVE, PlusMinusType.LEND).contains(deal.getPlusMinusType());
 
         if (isSelectingTo) {

@@ -55,7 +55,7 @@ public class FixCallbackHandler implements CallbackCommandHandler {
                 .button("❌ Отменить", "cancel_fixed:" + dealId)
                 .build();
 
-        userService.saveUserStatus(chatId, Status.IDLE);
+//        userService.saveUserStatus(chatId, Status.IDLE);
 
         String text = ((Message) query.getMessage()).getText();
         // 3) Даем явный ответ
@@ -70,6 +70,7 @@ public class FixCallbackHandler implements CallbackCommandHandler {
         dealRepo.save(deal);
 
         telegramSender.deleteMessages(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
+        userService.resetUserState(user);
         menuService.sendBalance(chatId);
         menuService.sendMainMenu(chatId);
     }

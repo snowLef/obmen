@@ -10,6 +10,7 @@ import org.example.repository.UserRepository;
 import org.example.model.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
 
@@ -25,14 +26,11 @@ public class UserService {
     }
 
     public void resetUserState(User user) {
-        Deal deal = new Deal();
         user.pushStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
         user.setCurrentDeal(null);
         save(user);
-        deal.setCurrentCurrencyIndex(0);
-        dealService.save(deal);
     }
 
     public User getUser(Long chatId) {
@@ -87,13 +85,14 @@ public class UserService {
         });
     }
 
-    public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type) {
+    public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type, Message message) {
         if (from == null && to == null) {
             userRepository.findByChatId(chatId).ifPresent(user -> {
                 Deal deal = new Deal();
                 deal.setDealType(type);
                 deal.setBalanceTypeFrom(BalanceType.OWN);
                 deal.setBalanceTypeTo(BalanceType.OWN);
+                deal.setCreatedBy("%s %s %s".formatted(message.getFrom().getFirstName(), message.getFrom().getLastName(), message.getFrom().getUserName()));
                 user.setCurrentDeal(deal);
                 userRepository.save(user);
             });
@@ -102,6 +101,7 @@ public class UserService {
                 Deal deal = new Deal();
                 deal.setMoneyFrom(List.of(from));
                 deal.setMoneyTo(List.of(to));
+                deal.setCreatedBy("%s %s %s".formatted(message.getFrom().getFirstName(), message.getFrom().getLastName(), message.getFrom().getUserName()));
                 deal.setDealType(type);
                 deal.setBalanceTypeFrom(BalanceType.OWN);
                 deal.setBalanceTypeTo(BalanceType.OWN);
