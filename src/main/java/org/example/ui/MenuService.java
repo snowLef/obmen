@@ -227,6 +227,11 @@ public class MenuService {
         String issuedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyFrom());
 
         if (deal.getDealType() == DealType.PLUS_MINUS) {
+            if (deal.getPlusMinusType() == PlusMinusType.LEND) {
+                receivedCurrencies = "";
+            } else if (deal.getPlusMinusType() == PlusMinusType.DEBT_REPAYMENT) {
+                issuedCurrencies = "";
+            }
             message.setText(messageUtils.escapeMarkdown("""
                                     Подтвердить?
                                     *%s*
@@ -474,6 +479,12 @@ public class MenuService {
 
         String receivedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyTo());
         String issuedCurrencies = messageUtils.formatCurrencyAmounts(deal.getMoneyFrom());
+
+        if (deal.getPlusMinusType() == PlusMinusType.LEND) {
+            receivedCurrencies = "";
+        } else if (deal.getPlusMinusType() == PlusMinusType.DEBT_REPAYMENT) {
+            issuedCurrencies = "";
+        }
 
         return """
                 Баланс изменен ✅

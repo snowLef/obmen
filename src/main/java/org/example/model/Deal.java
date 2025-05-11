@@ -75,6 +75,33 @@ public class Deal {
     @Setter
     private BalanceType balanceTo;
 
+    /**
+     * Откуда снимаем (OWN, FOREIGN, DEBT и т.п.).
+     * Не забывайте устанавливать его при создании/настройке сделки.
+     */
+    @Enumerated(EnumType.STRING)
+    private BalanceType balanceTypeFrom;
+
+    /**
+     * Куда кладём (OWN, FOREIGN, DEBT и т.п.).
+     */
+    @Enumerated(EnumType.STRING)
+    private BalanceType balanceTypeTo;
+
+    /** Время создания сделки в БД */
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    /** Время отмены сделки (устанавливается вручную при отмене) */
+    private LocalDateTime cancelledAt;
+
+    /** Ник того, кто отменил (либо просто строка) */
+    private String cancelledBy;
+
+    private String createdBy;
+
+    private String approvedBy;
 
     public List<Money> getMoneyFromList() {
         return moneyFrom.stream()
@@ -123,30 +150,4 @@ public class Deal {
     public void setAmountTo(long amount) {
         moneyTo.get(0).setAmount(amount);
     }
-
-    /**
-     * Откуда снимаем (OWN, FOREIGN, DEBT и т.п.).
-     * Не забывайте устанавливать его при создании/настройке сделки.
-     */
-    private BalanceType balanceTypeFrom;
-
-    /**
-     * Куда кладём (OWN, FOREIGN, DEBT и т.п.).
-     */
-    private BalanceType balanceTypeTo;
-
-    /** Время создания сделки в БД */
-    @CreationTimestamp
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
-
-    /** Время отмены сделки (устанавливается вручную при отмене) */
-    private LocalDateTime cancelledAt;
-
-    /** Ник того, кто отменил (либо просто строка) */
-    private String cancelledBy;
-
-    private String createdBy;
-
-    private String approvedBy;
 }

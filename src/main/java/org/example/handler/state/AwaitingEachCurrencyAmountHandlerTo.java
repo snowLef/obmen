@@ -7,6 +7,7 @@ import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
+import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Status;
 import org.example.service.DealService;
 import org.example.service.UserService;
@@ -56,6 +57,13 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                     .filter(e -> e.getCurrency().equals(currentCurrency))
                     .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
                     .setAmount(amount);
+
+            if (deal.getDealType().equals(DealType.PLUS_MINUS) && List.of(PlusMinusType.LEND, PlusMinusType.DEBT_REPAYMENT).contains(deal.getPlusMinusType())) {
+                deal.getMoneyFrom().stream()
+                        .filter(e -> e.getCurrency().equals(currentCurrency))
+                        .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
+                        .setAmount(amount);
+            }
 
             // Переход к следующей валюте
             index++;

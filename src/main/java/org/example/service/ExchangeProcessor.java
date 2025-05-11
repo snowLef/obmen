@@ -3,7 +3,10 @@ package org.example.service;
 import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
 import org.example.model.*;
+import org.example.model.enums.ChangeBalanceType;
 import org.example.model.enums.DealStatus;
+import org.example.model.enums.DealType;
+import org.example.model.enums.PlusMinusType;
 import org.example.repository.DealRepository;
 import org.example.ui.MenuService;
 import org.springframework.stereotype.Service;
@@ -78,7 +81,6 @@ public class ExchangeProcessor {
             telegramSender.sendText(chatId, "Недостаточно средств для сделки.");
         } else {
             d.setApproved(true);
-//            d.setApprovedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
             dealRepo.save(d);
             currencyService.applyDeal(d);
             menuService.sendDealCompletedWithCancel(chatId, d);

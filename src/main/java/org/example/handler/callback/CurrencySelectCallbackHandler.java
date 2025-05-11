@@ -72,6 +72,13 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
 
         toggleCurrencySelection(deal, selected, isSelectingTo);
 
+        // === ЗЕРКАЛЬНОЕ ДОБАВЛЕНИЕ ДЛЯ LEND и DEBT_REPAYMENT ===
+        if (deal.getPlusMinusType() == PlusMinusType.LEND) {
+            toggleCurrencySelection(deal, selected, !isSelectingTo);
+        } else if (deal.getPlusMinusType() == PlusMinusType.DEBT_REPAYMENT) {
+            toggleCurrencySelection(deal, selected, !isSelectingTo);
+        }
+
         List<Money> selectedList = isSelectingTo ? deal.getMoneyToList() : deal.getMoneyFromList();
         String selectedNames = selectedList.stream()
                 .filter(Objects::nonNull)
@@ -84,8 +91,17 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         userService.save(user);
     }
 
+    private void syncCurrencySelection(List<Money> targetList, Money currency) {
+        if (targetList.contains(currency)) {
+            targetList.remove(currency);
+        } else {
+            targetList.add(currency);
+        }
+    }
+
     private void handleDonePlusMinus(User user, Deal deal, Long chatId) {
-        boolean isSelectingTo = List.of(PlusMinusType.GIVE, PlusMinusType.LEND).contains(deal.getPlusMinusType());
+        PlusMinusType type = deal.getPlusMinusType();
+        boolean isSelectingTo = List.of(PlusMinusType.GIVE, PlusMinusType.LEND).contains(type);
 
         if (isSelectingTo) {
             user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
@@ -116,13 +132,7 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         switch (user.getStatus()) {
             case AWAITING_FIRST_CURRENCY -> {
                 deal.setMoneyTo(List.of(new CurrencyAmount(selected, 0)));
-//                if (deal.getDealType() == DealType.PLUS_MINUS) {
-//                    user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
-//                    dealService.save(deal);
-//                    userService.save(user);
-//                    telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
-//                } else
-                    if (deal.getDealType() == DealType.MOVING_BALANCE) {
+                if (deal.getDealType() == DealType.MOVING_BALANCE) {
                     user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
                     deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
                     dealService.save(deal);
