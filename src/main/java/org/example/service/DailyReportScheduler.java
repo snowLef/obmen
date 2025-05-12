@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
 import org.example.infra.TelegramSenderImpl;
 import org.example.model.Deal;
+import org.example.model.enums.SettingKey;
 import org.example.repository.DealRepository;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,15 @@ public class DailyReportScheduler {
     private final DealRepository dealRepository;
     private final ExcelReportService excelReportService;
     private final TelegramSenderImpl telegramSender;
+    private final SettingService settingService;
 
-    // ID чата/группы, куда отправлять отчёт
-    private final long REPORT_CHAT_ID = -1002619678847L;
+//    // ID чата/группы, куда отправлять отчёт
+//    private final long REPORT_CHAT_ID = -1002619678847L;
+
+    long chatId = settingService.getLong(SettingKey.REPORT_CHAT_ID);
 
     @Scheduled(cron = "0 0 22 * * *") // каждый день в 22:00
-public void sendDailyReport() {
+    public void sendDailyReport() {
         // текущая дата
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay();
@@ -36,7 +40,7 @@ public void sendDailyReport() {
         List<Deal> todaysDeals = dealRepository.findAllByCreatedAtBetween(startOfDay, endOfDay);
 
         if (todaysDeals.isEmpty()) {
-            telegramSender.sendText(REPORT_CHAT_ID, "Нет сделок за " + today);
+            telegramSender.sendText(chatId, "Нет сделок за " + today);
             return;
         }
 
@@ -44,6 +48,6 @@ public void sendDailyReport() {
 
         InputFile inputFile = new InputFile(new ByteArrayInputStream(report), "Отчет_" + today + ".xlsx");
 
-        telegramSender.sendDocument(REPORT_CHAT_ID, inputFile, "Отчет за " + today);
+        telegramSender.sendDocument(chatId, inputFile, "Отчет за " + today);
     }
 }
