@@ -27,10 +27,9 @@ public class DailyReportScheduler {
 //    // ID чата/группы, куда отправлять отчёт
 //    private final long REPORT_CHAT_ID = -1002619678847L;
 
-    long chatId = settingService.getLong(SettingKey.REPORT_CHAT_ID);
-
     @Scheduled(cron = "0 0 22 * * *") // каждый день в 22:00
     public void sendDailyReport() {
+        long chatId = settingService.getLong(SettingKey.REPORT_CHAT_ID);
         // текущая дата
         LocalDate today = LocalDate.now();
         LocalDateTime startOfDay = today.atStartOfDay();
