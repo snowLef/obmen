@@ -173,6 +173,7 @@ public class CommandMapConfig {
         deal.setCreatedBy("%s %s %s".formatted(ctx.message().getFrom().getFirstName(), ctx.message().getFrom().getLastName(), ctx.message().getFrom().getUserName()));
         user.setCurrentDeal(deal);
         userService.save(user);
+        userService.addMessageToDel(ctx.chatId(), ctx.msgId());
         menuService.sendChangeBalanceMenu(ctx.chatId());
     }
 

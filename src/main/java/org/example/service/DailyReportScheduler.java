@@ -1,7 +1,6 @@
 package org.example.service;
 
 import lombok.RequiredArgsConstructor;
-import org.example.infra.TelegramSender;
 import org.example.infra.TelegramSenderImpl;
 import org.example.model.Deal;
 import org.example.model.enums.SettingKey;
@@ -24,10 +23,7 @@ public class DailyReportScheduler {
     private final TelegramSenderImpl telegramSender;
     private final SettingService settingService;
 
-//    // ID чата/группы, куда отправлять отчёт
-//    private final long REPORT_CHAT_ID = -1002619678847L;
-
-    @Scheduled(cron = "0 0 22 * * *") // каждый день в 22:00
+    @Scheduled(cron = "0 0 21 * * *")
     public void sendDailyReport() {
         long chatId = settingService.getLong(SettingKey.REPORT_CHAT_ID);
         // текущая дата

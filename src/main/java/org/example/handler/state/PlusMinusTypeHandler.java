@@ -68,9 +68,6 @@ public class PlusMinusTypeHandler implements UserStateHandler {
         userRepository.save(user);
         userService.saveUserStatus(chatId, Status.AWAITING_BUYER_NAME);
         telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_NAME);
-
-//        userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
-//        menuService.sendSelectCurrency(chatId, "Выберите валюту +/-");
         userService.addMessageToDel(chatId, msgId);
     }
 
