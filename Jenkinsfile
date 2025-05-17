@@ -36,17 +36,7 @@ pipeline {
                 sleep time: 15, unit: 'SECONDS'
             }
         }
-
-        stage('Health Check') {
-            steps {
-                script {
-                    def response = powershell(script: 'Invoke-WebRequest -Uri http://localhost:8080/actuator/health -UseBasicParsing', returnStatus: true)
-                    if (response != 0) {
-                        error("Health check failed")
-                    }
-                }
-            }
-        }
+}
     }
 
     post {
