@@ -50,35 +50,35 @@ public class User {
     @Setter
     private Integer messageToEdit;
 
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private AmountType amountType;
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private AmountType amountType;
+//
+//    @Setter
+//    private int currentCurrencyIndex;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private CurrencyType currencyType;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private PlusMinusType plusMinusType;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private ChangeBalanceType changeBalanceType;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private BalanceType balanceFrom;
+//
+//    @Enumerated(EnumType.STRING)
+//    @Setter
+//    private BalanceType balanceTo;
 
-    @Setter
-    private int currentCurrencyIndex;
-
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private CurrencyType currencyType;
-
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private PlusMinusType plusMinusType;
-
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private ChangeBalanceType changeBalanceType;
-
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private BalanceType balanceFrom;
-
-    @Enumerated(EnumType.STRING)
-    @Setter
-    private BalanceType balanceTo;
-
-    @Transient // Не сохраняем в БД, если используем JPA
-    private Deque<Status> statusHistory = new ArrayDeque<>();
+//    @Transient // Не сохраняем в БД, если используем JPA
+//    private Deque<Status> statusHistory = new ArrayDeque<>();
 
     public void pushStatus(Status newStatus) {
         if (this.status != null) {

@@ -2,6 +2,7 @@ package org.example.handler.callback;
 
 import lombok.RequiredArgsConstructor;
 import org.example.infra.TelegramSender;
+import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.AmountType;
 import org.example.model.enums.Status;
@@ -22,24 +23,27 @@ public class AwaitingSelectAmountCallbackHandler implements CallbackCommandHandl
     public void handle(CallbackQuery query, User user) {
         Long chatId = query.getMessage().getChatId();
         String data = query.getData();
+        Deal deal = user.getCurrentDeal();
 
         if ("give".equals(data)) {
-            user.setAmountType(AmountType.GIVE);
+            deal.setAmountType(AmountType.GIVE);
+            deal.getMoneyFrom().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
             user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
-            user.getCurrentDeal().getMoneyFrom().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
+            user.setCurrentDeal(deal);
             userService.save(user);
         } else if ("receive".equals(data)) {
-            user.setAmountType(AmountType.RECEIVE);
+            deal.setAmountType(AmountType.RECEIVE);
             user.pushStatus(Status.AWAITING_EXCHANGE_RATE);
-            user.getCurrentDeal().getMoneyTo().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
+            deal.getMoneyTo().get(0).setAmount(user.getCurrentDeal().getCurrentAmount());
+            user.setCurrentDeal(deal);
             userService.save(user);
         }
 
             telegramSender.sendTextWithKeyboard(chatId, "Введите курс:");
-            if (user.getAmountType() == AmountType.GIVE) {
+            if (deal.getAmountType() == AmountType.GIVE) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(),
                         user.getCurrentDeal().getCurrentAmount() + " *" + user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName() + "* отдать");
-            } else if (user.getAmountType() == AmountType.RECEIVE) {
+            } else if (deal.getAmountType() == AmountType.RECEIVE) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(),
                         user.getCurrentDeal().getCurrentAmount() + " *" + user.getCurrentDeal().getMoneyTo().get(0).getCurrency().getName() + "* забрать");
             } else {

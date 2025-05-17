@@ -68,9 +68,16 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
 
         Money selected = Money.valueOfName(data);
 
-        boolean isSelectingTo = List.of(PlusMinusType.GET, PlusMinusType.DEBT_REPAYMENT).contains(user.getPlusMinusType());
+        boolean isSelectingTo = List.of(PlusMinusType.GET, PlusMinusType.DEBT_REPAYMENT).contains(deal.getPlusMinusType());
 
         toggleCurrencySelection(deal, selected, isSelectingTo);
+
+        // === ЗЕРКАЛЬНОЕ ДОБАВЛЕНИЕ ДЛЯ LEND и DEBT_REPAYMENT ===
+        if (deal.getPlusMinusType() == PlusMinusType.LEND) {
+            toggleCurrencySelection(deal, selected, !isSelectingTo);
+        } else if (deal.getPlusMinusType() == PlusMinusType.DEBT_REPAYMENT) {
+            toggleCurrencySelection(deal, selected, !isSelectingTo);
+        }
 
         List<Money> selectedList = isSelectingTo ? deal.getMoneyToList() : deal.getMoneyFromList();
         String selectedNames = selectedList.stream()
@@ -84,20 +91,17 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         userService.save(user);
     }
 
-    private void handleDonePlusMinus(User user, Deal deal, Long chatId) {
-//        if (deal.getMoneyFromList().isEmpty() && user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//            menuService.sendMainMenu(chatId);
-//        } else if (deal.getMoneyToList().isEmpty() && user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//            menuService.sendMainMenu(chatId);
-//        }
+    private void syncCurrencySelection(List<Money> targetList, Money currency) {
+        if (targetList.contains(currency)) {
+            targetList.remove(currency);
+        } else {
+            targetList.add(currency);
+        }
+    }
 
-        boolean isSelectingTo = List.of(PlusMinusType.GIVE, PlusMinusType.LEND).contains(user.getPlusMinusType());
+    private void handleDonePlusMinus(User user, Deal deal, Long chatId) {
+        PlusMinusType type = deal.getPlusMinusType();
+        boolean isSelectingTo = List.of(PlusMinusType.GIVE, PlusMinusType.LEND).contains(type);
 
         if (isSelectingTo) {
             user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
@@ -128,13 +132,7 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
         switch (user.getStatus()) {
             case AWAITING_FIRST_CURRENCY -> {
                 deal.setMoneyTo(List.of(new CurrencyAmount(selected, 0)));
-//                if (deal.getDealType() == DealType.PLUS_MINUS) {
-//                    user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
-//                    dealService.save(deal);
-//                    userService.save(user);
-//                    telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
-//                } else
-                    if (deal.getDealType() == DealType.MOVING_BALANCE) {
+                if (deal.getDealType() == DealType.MOVING_BALANCE) {
                     user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
                     deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
                     dealService.save(deal);
@@ -142,9 +140,9 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
                     telegramSender.sendTextWithKeyboard(chatId, BotCommands.ASK_FOR_AMOUNT);
                 } else if (deal.getDealType() == DealType.CHANGE_BALANCE) {
                     user.pushStatus(Status.AWAITING_DEAL_AMOUNT);
-                    if (user.getChangeBalanceType() == ChangeBalanceType.ADD) {
+                    if (deal.getChangeBalanceType() == ChangeBalanceType.ADD) {
                         deal.setMoneyTo(List.of(new CurrencyAmount(selected, 0)));
-                    } else if (user.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
+                    } else if (deal.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
                         deal.setMoneyFrom(List.of(new CurrencyAmount(selected, 0)));
                     }
                     telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выбрано: *" + selected.getName() + "*");
@@ -221,16 +219,6 @@ public class CurrencySelectCallbackHandler implements CallbackCommandHandler {
     }
 
     private void handleDone(User user, Deal deal, Long chatId) {
-
-//        if (deal.getMoneyToList().isEmpty() && user.getStatus() == Status.AWAITING_FIRST_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//        } else if (deal.getMoneyFromList().isEmpty() && user.getStatus() == Status.AWAITING_SECOND_CURRENCY) {
-//            exchangeProcessor.deleteMsgs(chatId, userService.getMessageIdsToDeleteWithInit(chatId));
-//            userService.resetUserState(user);
-//            telegramSender.sendText(chatId, "Сделка отменена.");
-//        }
 
         if (user.getStatus() == Status.AWAITING_FIRST_CURRENCY
                 && !List.of(DealType.TRANSPOSITION, DealType.INVOICE).contains(deal.getDealType())) {

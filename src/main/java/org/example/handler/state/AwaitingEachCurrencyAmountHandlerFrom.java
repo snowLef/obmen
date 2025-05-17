@@ -7,6 +7,7 @@ import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
+import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Status;
 import org.example.service.CurrencyService;
 import org.example.service.DealService;
@@ -39,10 +40,9 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
                 .map(CurrencyAmount::getCurrency)
                 .toList();
 
-        Integer index = user.getCurrentCurrencyIndex(); // индекс текущей валюты
+        Integer index = deal.getCurrentCurrencyIndex(); // индекс текущей валюты
         if (index >= currencies.size()) {
             telegramSender.sendTextWithKeyboard(chatId, "Ошибка: индекс валюты вне диапазона.");
-//            menuService.sendSelectFullCurrency(chatId, "Выберите валюту");
             return;
         }
 
@@ -59,11 +59,18 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
                     .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
                     .setAmount(amount);
 
+            if (deal.getDealType().equals(DealType.PLUS_MINUS) && List.of(PlusMinusType.LEND, PlusMinusType.DEBT_REPAYMENT).contains(deal.getPlusMinusType())) {
+                deal.getMoneyTo().stream()
+                        .filter(e -> e.getCurrency().equals(currentCurrency))
+                        .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
+                        .setAmount(amount);
+            }
+
             // Переход к следующей валюте
             index++;
             if (index < currencies.size()) {
-                user.setCurrentCurrencyIndex(index);
-                userService.save(user);
+                deal.setCurrentCurrencyIndex(index);
+                dealService.save(deal);
 
                 if (deal.getDealType() == DealType.PLUS_MINUS) {
                     telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + formattedText + " " + currentCurrency.getName());
@@ -74,7 +81,8 @@ public class AwaitingEachCurrencyAmountHandlerFrom implements UserStateHandler {
                 }
             } else {
                 user.pushStatus(Status.AWAITING_APPROVE);
-                user.setCurrentCurrencyIndex(0);
+                deal.setCurrentCurrencyIndex(0);
+                user.setCurrentDeal(deal);
                 userService.save(user);
                 telegramSender.editMsg(chatId, user.getMessageToEdit(), "Выдано: " + formattedText + " " + currentCurrency.getName());
                 if (deal.getDealType() == DealType.TRANSPOSITION || deal.getDealType() == DealType.INVOICE) {

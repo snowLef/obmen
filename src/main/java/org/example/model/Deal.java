@@ -3,9 +3,10 @@ package org.example.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.example.model.enums.DealType;
-import org.example.model.enums.Money;
+import org.example.model.enums.*;
+import org.hibernate.annotations.CreationTimestamp;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +28,11 @@ public class Deal {
     @CollectionTable(name = "deal_money_to", joinColumns = @JoinColumn(name = "deal_id"))
     private List<CurrencyAmount> moneyTo = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    private DealStatus status = DealStatus.NEW;
+
+    private int MessageId;
+
     private String buyerName;
 
     private String cityFromTo;
@@ -37,9 +43,65 @@ public class Deal {
 
     private String comment;
 
+    private boolean approved = false;
+
     @Enumerated(EnumType.STRING)
     private DealType dealType;
 
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private AmountType amountType;
+
+    @Setter
+    private int currentCurrencyIndex;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private CurrencyType currencyType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private PlusMinusType plusMinusType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private ChangeBalanceType changeBalanceType;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private BalanceType balanceFrom;
+
+    @Enumerated(EnumType.STRING)
+    @Setter
+    private BalanceType balanceTo;
+
+    /**
+     * Откуда снимаем (OWN, FOREIGN, DEBT и т.п.).
+     * Не забывайте устанавливать его при создании/настройке сделки.
+     */
+    @Enumerated(EnumType.STRING)
+    private BalanceType balanceTypeFrom;
+
+    /**
+     * Куда кладём (OWN, FOREIGN, DEBT и т.п.).
+     */
+    @Enumerated(EnumType.STRING)
+    private BalanceType balanceTypeTo;
+
+    /** Время создания сделки в БД */
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    /** Время отмены сделки (устанавливается вручную при отмене) */
+    private LocalDateTime cancelledAt;
+
+    /** Ник того, кто отменил (либо просто строка) */
+    private String cancelledBy;
+
+    private String createdBy;
+
+    private String approvedBy;
 
     public List<Money> getMoneyFromList() {
         return moneyFrom.stream()
@@ -88,5 +150,4 @@ public class Deal {
     public void setAmountTo(long amount) {
         moneyTo.get(0).setAmount(amount);
     }
-
 }

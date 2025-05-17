@@ -3,12 +3,14 @@ package org.example.service;
 import jakarta.transaction.Transactional;
 import org.example.model.CurrencyAmount;
 import org.example.model.Deal;
+import org.example.model.enums.BalanceType;
 import org.example.model.enums.DealType;
 import org.example.model.User;
 import org.example.repository.UserRepository;
 import org.example.model.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import java.util.List;
 public class UserService {
 
     private UserRepository userRepository;
+    private DealService dealService;
 
     @Autowired
     public void setUserRepository(UserRepository userRepository) {
@@ -23,11 +26,10 @@ public class UserService {
     }
 
     public void resetUserState(User user) {
-        user.setCurrentDeal(null);
         user.pushStatus(Status.IDLE);
         user.setMessages(null);
         user.setMessageToEdit(null);
-        user.setCurrentCurrencyIndex(0);
+        user.setCurrentDeal(null);
         save(user);
     }
 
@@ -83,11 +85,14 @@ public class UserService {
         });
     }
 
-    public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type) {
+    public void startDeal(Long chatId, CurrencyAmount from, CurrencyAmount to, DealType type, Message message) {
         if (from == null && to == null) {
             userRepository.findByChatId(chatId).ifPresent(user -> {
                 Deal deal = new Deal();
                 deal.setDealType(type);
+                deal.setBalanceTypeFrom(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.OWN);
+                deal.setCreatedBy("%s %s %s".formatted(message.getFrom().getFirstName(), message.getFrom().getLastName(), message.getFrom().getUserName()));
                 user.setCurrentDeal(deal);
                 userRepository.save(user);
             });
@@ -96,7 +101,10 @@ public class UserService {
                 Deal deal = new Deal();
                 deal.setMoneyFrom(List.of(from));
                 deal.setMoneyTo(List.of(to));
+                deal.setCreatedBy("%s %s %s".formatted(message.getFrom().getFirstName(), message.getFrom().getLastName(), message.getFrom().getUserName()));
                 deal.setDealType(type);
+                deal.setBalanceTypeFrom(BalanceType.OWN);
+                deal.setBalanceTypeTo(BalanceType.OWN);
                 user.setCurrentDeal(deal);
                 userRepository.save(user);
             });
@@ -116,4 +124,8 @@ public class UserService {
                 .orElse(List.of());
     }
 
+    @Autowired
+    public void setDealService(DealService dealService) {
+        this.dealService = dealService;
+    }
 }

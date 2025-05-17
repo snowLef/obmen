@@ -3,16 +3,24 @@ package org.example.infra;
 import lombok.extern.slf4j.Slf4j;
 import org.example.bot.ObmenBot;
 import org.example.service.UserService;
+import org.example.ui.InlineKeyboardBuilder;
 import org.example.ui.MenuService;
 import org.example.util.MessageUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.ParseMode;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+
+import java.io.ByteArrayInputStream;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -80,6 +88,53 @@ public class TelegramSenderImpl implements TelegramSender {
         }
     }
 
+    public void editMessageReplyMarkup(long chatId, int messageId, InlineKeyboardMarkup markup) {
+        EditMessageReplyMarkup edit = EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(chatId))
+                .messageId(messageId)
+                .replyMarkup(markup)
+                .build();
+        try {
+            obmenBot.execute(edit);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }    }
+
+    public Message sendWithMarkup(long chatId, String text, InlineKeyboardMarkup markup) {
+        SendMessage msg = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .text(messageUtils.escapeMarkdown(text))
+                .replyMarkup(markup)
+                .parseMode("MarkdownV2")
+                .build();
+        try {
+            return obmenBot.execute(msg);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Message sendWithMarkup(long chatId, String text, InlineKeyboardMarkup markup, String parseMode) {
+        SendMessage.SendMessageBuilder builder = SendMessage.builder()
+                .chatId(String.valueOf(chatId))
+                .replyMarkup(markup)
+                .parseMode(parseMode);
+
+        if ("MarkdownV2".equals(parseMode)) {
+            builder.text(messageUtils.escapeMarkdown(text));
+        } else {
+            // любые другие режимы (обычно "HTML") — передаём текст без эскейпа
+            builder.text(text);
+        }
+
+        SendMessage msg = builder.build();
+        try {
+            return obmenBot.execute(msg);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void editMsgWithKeyboard(Long chatId, Integer messageToEdit, String s) {
         EditMessageText message = new EditMessageText();
         message.setChatId(chatId);
@@ -129,6 +184,56 @@ public class TelegramSenderImpl implements TelegramSender {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public void deleteMessages(long chatId, List<Integer> ids) {
+        ids.forEach(
+                x -> deleteMessage(chatId, x)
+        );
+    }
+
+    /**
+     * Правит клавиатуру у уже отправленного сообщения.
+     */
+    public void editReplyMarkup(long chatId, int messageId, InlineKeyboardMarkup markup) {
+        EditMessageReplyMarkup edit = EditMessageReplyMarkup.builder()
+                .chatId(String.valueOf(chatId))
+                .messageId(messageId)
+                .replyMarkup(markup)
+                .build();
+
+        try {
+            obmenBot.execute(edit);
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка редактирования разметки", e);
+        }
+    }
+
+    public void sendExcelReport(long chatId, byte[] data, String filename) {
+        SendDocument doc = SendDocument.builder()
+                .chatId(String.valueOf(chatId))
+                .document(new InputFile(new ByteArrayInputStream(data), filename))
+                .caption("Отчёт по сделкам")
+                .build();
+
+        try {
+            obmenBot.execute(doc);
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка отправки файла", e);
+        }
+    }
+
+    public void sendDocument(long chatId, InputFile file, String caption) {
+        SendDocument doc = new SendDocument();
+        doc.setChatId(String.valueOf(chatId));
+        doc.setDocument(file);
+        doc.setCaption(caption);
+
+        try {
+            obmenBot.execute(doc);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException("Ошибка при отправке документа", e);
         }
     }
 }

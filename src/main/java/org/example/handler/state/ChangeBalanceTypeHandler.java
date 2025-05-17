@@ -31,7 +31,7 @@ public class ChangeBalanceTypeHandler implements UserStateHandler {
         }
 
         if (user.getStatus().equals(Status.AWAITING_CHANGE_BALANCE_TYPE)) {
-            user.setChangeBalanceType(type);
+            user.getCurrentDeal().setChangeBalanceType(type);
         }
         user.pushStatus(Status.AWAITING_FIRST_CURRENCY);
         userService.save(user);

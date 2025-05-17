@@ -7,6 +7,7 @@ import org.example.model.Deal;
 import org.example.model.User;
 import org.example.model.enums.DealType;
 import org.example.model.enums.Money;
+import org.example.model.enums.PlusMinusType;
 import org.example.model.enums.Status;
 import org.example.service.DealService;
 import org.example.service.UserService;
@@ -38,7 +39,7 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                 .map(CurrencyAmount::getCurrency)
                 .toList();
 
-        int index = user.getCurrentCurrencyIndex(); // индекс текущей валюты
+        int index = deal.getCurrentCurrencyIndex(); // индекс текущей валюты
         if (index >= currencies.size()) {
             telegramSender.sendTextWithKeyboard(chatId, "Ошибка: индекс валюты вне диапазона.");
             //menuService.sendSelectFullCurrency(chatId, "Выберите валюту");
@@ -57,10 +58,17 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
                     .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
                     .setAmount(amount);
 
+            if (deal.getDealType().equals(DealType.PLUS_MINUS) && List.of(PlusMinusType.LEND, PlusMinusType.DEBT_REPAYMENT).contains(deal.getPlusMinusType())) {
+                deal.getMoneyFrom().stream()
+                        .filter(e -> e.getCurrency().equals(currentCurrency))
+                        .findFirst().orElseThrow(() -> new RuntimeException("Не найдена валюта в бд в deal.getMoneyFrom()"))
+                        .setAmount(amount);
+            }
+
             // Переход к следующей валюте
             index++;
             if (index < currencies.size()) {
-                user.setCurrentCurrencyIndex(index);
+                deal.setCurrentCurrencyIndex(index);
                 userService.save(user);
 
                 if (deal.getDealType() == DealType.PLUS_MINUS) {
@@ -74,19 +82,22 @@ public class AwaitingEachCurrencyAmountHandlerTo implements UserStateHandler {
             } else if (deal.getDealType() == DealType.PLUS_MINUS) {
                 telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                 user.pushStatus(Status.AWAITING_APPROVE);
-                user.setCurrentCurrencyIndex(0);
+                deal.setCurrentCurrencyIndex(0);
+                user.setCurrentDeal(deal);
                 userService.save(user);
                 menuService.sendApproveMenu(chatId);
             } else if (deal.getDealType() == DealType.TRANSPOSITION || deal.getDealType() == DealType.INVOICE) {
                 user.pushStatus(Status.AWAITING_SECOND_CURRENCY);
-                user.setCurrentCurrencyIndex(0);
+                deal.setCurrentCurrencyIndex(0);
+                user.setCurrentDeal(deal);
                 userService.save(user);
                 telegramSender.editMsg(chatId, user.getMessageToEdit(), "Получено: " + formattedText + " " + currentCurrency.getName());
                 Message message1 = menuService.sendSelectFullCurrency(chatId, "Выберите валюту выдачи");
                 user.setMessageToEdit(message1.getMessageId());
             } else {
                 user.pushStatus(Status.AWAITING_AMOUNT_FOR_EACH_CURRENCY_FROM);
-                user.setCurrentCurrencyIndex(0);
+                deal.setCurrentCurrencyIndex(0);
+                user.setCurrentDeal(deal);
                 userService.save(user);
                 String nextCurrency = user.getCurrentDeal().getMoneyFrom().get(0).getCurrency().getName();
                 telegramSender.sendTextWithKeyboard(chatId, "[Выдача] Введите сумму для %s:".formatted(nextCurrency));

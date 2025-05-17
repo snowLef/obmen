@@ -64,4 +64,12 @@ public final class KeyboardUtils {
         markup.setKeyboard(rows);
         return markup;
     }
+
+    private InlineKeyboardButton button(String text, String callbackData) {
+        InlineKeyboardButton btn = new InlineKeyboardButton();
+        btn.setText(text);
+        btn.setCallbackData(callbackData);
+        return btn;
+    }
+
 }

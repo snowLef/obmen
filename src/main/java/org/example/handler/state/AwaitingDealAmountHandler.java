@@ -77,9 +77,9 @@ public class AwaitingDealAmountHandler implements UserStateHandler {
                     menuService.sendApproveMenu(chatId);
                 }
                 case CHANGE_BALANCE -> {
-                    if (user.getChangeBalanceType() == ChangeBalanceType.ADD) {
+                    if (deal.getChangeBalanceType() == ChangeBalanceType.ADD) {
                         deal.getMoneyTo().get(0).setAmount(amount);
-                    } else if (user.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
+                    } else if (deal.getChangeBalanceType() == ChangeBalanceType.WITHDRAWAL) {
                         deal.getMoneyFrom().get(0).setAmount(amount);
                     }
                     user.pushStatus(Status.AWAITING_COMMENT);

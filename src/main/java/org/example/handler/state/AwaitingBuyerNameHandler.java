@@ -47,8 +47,6 @@ public class AwaitingBuyerNameHandler implements UserStateHandler {
                 menuService.sendSelectCurrency(chatId, "Выберите валюту получения");
             }
             case PLUS_MINUS -> {
-//                userService.saveUserStatus(chatId, Status.AWAITING_PLUS_MINUS_TYPE);
-//                menuService.sendPlusMinusMenu(chatId);
                 userService.saveUserStatus(chatId, Status.AWAITING_FIRST_CURRENCY);
                 menuService.sendSelectCurrency(chatId, "Выберите валюту +/-");
             }

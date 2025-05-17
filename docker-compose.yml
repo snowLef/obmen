@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: obmen
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    networks:
+      - obmen-net
+
+  app:
+    build: .
+    environment:
+      BOT_TOKEN: 7553067691:AAEh_m5NKOksz_FaO-kKn8X9uyaYhSI5SMQ
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/obmen
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    depends_on:
+      - postgres
+    networks:
+      - obmen-net
+
+networks:
+  obmen-net:
