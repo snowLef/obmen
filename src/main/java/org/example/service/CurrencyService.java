@@ -11,6 +11,7 @@ import org.example.repository.CurrencyRepository;
 import org.example.repository.DealRepository;
 import org.example.ui.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -33,6 +34,7 @@ public class CurrencyService {
         this.currencyRepository = currencyRepository;
     }
 
+    @Lazy
     @Autowired
     public void setMenuService(MenuService menuService) {
         this.menuService = menuService;
