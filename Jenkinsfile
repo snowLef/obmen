@@ -39,7 +39,7 @@ pipeline {
     }
 
     post {
-        always {
+        failure {
             echo 'Останавливаем docker-compose...'
             bat 'docker-compose -f %COMPOSE_FILE% down'
         }
