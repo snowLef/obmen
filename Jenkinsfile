@@ -2,37 +2,44 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_COMPOSE_PATH = "./docker-compose.yml"
+        COMPOSE_FILE = 'docker-compose.yml'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/snowLef/obmen.git'
+                checkout scm
             }
         }
 
         stage('Build JAR') {
             steps {
-                bat './gradlew clean build'
+                // Запускаем сборку Maven
+                bat 'mvn clean package -DskipTests'
             }
         }
 
         stage('Build & Run with Docker Compose') {
             steps {
-                bat "docker-compose -f %DOCKER_COMPOSE_PATH% up -d --build"
+                bat 'docker-compose -f %COMPOSE_FILE% up -d --build'
             }
         }
 
         stage('Wait for App Startup') {
             steps {
-                bat 'timeout /t 10'
+                echo 'Waiting for app to start...'
+                sleep time: 15, unit: 'SECONDS'
             }
         }
 
         stage('Health Check') {
             steps {
-                bat 'curl http://localhost:8080/actuator/health'
+                script {
+                    def response = powershell(script: 'Invoke-WebRequest -Uri http://localhost:8080/actuator/health -UseBasicParsing', returnStatus: true)
+                    if (response != 0) {
+                        error("Health check failed")
+                    }
+                }
             }
         }
     }
@@ -40,7 +47,7 @@ pipeline {
     post {
         always {
             echo 'Останавливаем docker-compose...'
-            bat "docker-compose -f %DOCKER_COMPOSE_PATH% down"
+            bat 'docker-compose -f %COMPOSE_FILE% down'
         }
     }
 }
