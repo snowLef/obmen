@@ -36,7 +36,6 @@ pipeline {
                 sleep time: 15, unit: 'SECONDS'
             }
         }
-}
     }
 
     post {
